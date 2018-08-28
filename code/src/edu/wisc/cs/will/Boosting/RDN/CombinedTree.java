@@ -15,7 +15,7 @@ import edu.wisc.cs.will.FOPC.TreeStructuredTheory;
 public class CombinedTree {
 	private static Set<String> predicates = new HashSet<String>(); //This has all unique predicates across all trees
 	private static Set<Set<Clause>> setOfClauses = new HashSet<Set<Clause>>(); //This has the collection of trees as clauses
-	private static HashMap<String, Double> finalTree = new HashMap<>(); //This is the combined tree as a Hash Map --> not needed for any major output.
+	private static HashMap<String, Double> finalTree = new HashMap<String, Double>(); //This is the combined tree as a Hash Map --> not needed for any major output.
 	private static ArrayList<String> finalClauses = new ArrayList<String>(); //This is the final set of clauses after combination
 	private static Set<HashMap<String, Double>> treesToAdd = new HashSet<HashMap<String, Double>>(); //This contains the collection of trees to add
 	private static List<RegressionRDNExample> finalDataSet = new ArrayList<RegressionRDNExample>(); //it will store the final example and regression values to fit the tree on.
@@ -105,7 +105,7 @@ public class CombinedTree {
 		CombinedTree.printPredicates(); //print unique predicates
 		CombinedTree.printSetOfClauses(); //print all clauses across all trees
 		for(Set<Clause> clauses: setOfClauses){
-			HashMap<String, Double> tree = new HashMap<>();
+			HashMap<String, Double> tree = new HashMap<String, Double>();
 			for(Clause clause: clauses){
 				List<Literal> bodyList = clause.getDefiniteClauseBody();
 				Literal head = clause.getDefiniteClauseHead();
