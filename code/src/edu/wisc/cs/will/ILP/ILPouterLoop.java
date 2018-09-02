@@ -989,7 +989,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             // Since getLength() includes the head, we see if current length EXCEEDS the maxTreeDepthInLiterals.
                             // Since 'maxTreeDepthInLiterals' includes bridgers, count them as well.
                             if (atMaxDepth) { Utils.println("%   Creating a TRUE-branch and FALSE-branch leaves because level = "  + interiorNode.getLevel() + " >= " + maxTreeDepthInInteriorNodes); }
-                            if ((forceChildren && !forceLeftBranch) || (!forceChildren && (atMaxDepth || goodEnoughFitTrueBranch ||
+                            if ((forceChildren && (!forceLeftBranch || wgtedCountTrueBranchPos == 0)) || (!forceChildren && (atMaxDepth || goodEnoughFitTrueBranch ||
                                 newClause.getLength()   >  maxTreeDepthInLiterals || // We use '>' here since we don't count the head literal in depth.
                                 wgtedCountTrueBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
                                 wgtedCountTrueBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
@@ -1049,7 +1049,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             	meanVecFalse = bestNode.meanVectorIfFalse();
                             }
                             // No need to check max clause length (maxTreeDepthInLiterals) since that should have been checked at parent's call (since no literals added for FALSE branch).
-                            if ((forceChildren && !forceRightBranch) || (!forceChildren && (atMaxDepth || goodEnoughFitFalseBranch ||
+                            if ((forceChildren && (!forceRightBranch || wgtedCountFalseBranchPos == 0)) || (!forceChildren && (atMaxDepth || goodEnoughFitFalseBranch ||
                             //	newClause.getLength()   >  maxTreeDepthInLiterals  ||
                                 wgtedCountFalseBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
                                 wgtedCountFalseBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
