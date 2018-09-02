@@ -65,9 +65,12 @@ import edu.wisc.cs.will.ResThmProver.VariantClauseAction;
 import edu.wisc.cs.will.Utils.Utils;
 import edu.wisc.cs.will.Utils.VectorStatistics;
 import edu.wisc.cs.will.Utils.condor.CondorFile;
+import edu.wisc.cs.will.Utils.condor.CondorFileReader;
 import edu.wisc.cs.will.stdAIsearch.BestFirstSearch;
 import edu.wisc.cs.will.stdAIsearch.SearchInterrupted;
 import edu.wisc.cs.will.stdAIsearch.SearchStrategy;
+import edu.wisc.cs.will.Refine.Refine;
+import java.io.BufferedReader;
 
 /**
  *
@@ -1705,8 +1708,12 @@ public final class WILLSetup {
 		
 		getOuterLooper().setMaxTreeDepth(5); // Counting is from 0 (i.e., this is really "max number of ancestor nodes").  maxNumberOfClauses might 'dominate' this setting.
 		
-		
-		
+		// Read and set refine file
+                String refineFile = cmdArgs.getRefineFileVal();
+                if (refineFile != null) {
+                        Refine refine = getRefine(refineFile);
+                        getOuterLooper().setRefineFileVal(refine);
+                }		
 		
 		getOuterLooper().innerLoopTask.maxFreeBridgersInBody = 1; // Math.max(2, outerLooper.getMaxNumberOfLiteralsAtAnInteriorNode()); // This is the body of ONE node.  By allowing more bridgers that literals we can, say, create comparators between two extracted values.
 		// Add 1 here since the root has literals but is at depth 0.
@@ -1830,4 +1837,23 @@ public final class WILLSetup {
 		return multiclassHandler;
 	}
 
+        // Function responsible for reading refine file
+        private Refine getRefine(String filePath) {
+                Refine refine = new Refine();
+                try {
+                    //getOuterLooper().setRefineFileVal(cmdArgs.getRefineFileVal());
+                    BufferedReader reader = new BufferedReader(new CondorFileReader(filePath));
+                    String line = null;
+                    while((line = reader.readLine()) != null) {
+                        String[] split = line.split(";");
+                        refine.addRefine(Integer.parseInt(split[0]), split[1], split[2], Boolean.parseBoolean(split[3]), Boolean.parseBoolean(split[4]));
+                    }
+                }catch (FileNotFoundException ex){
+                    //System.out.println(ex);
+                }
+                catch (IOException ex){
+                    //System.out.println(ex);
+                }
+                return refine;
+        }
 }

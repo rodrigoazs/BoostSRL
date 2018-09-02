@@ -40,6 +40,7 @@ import java.util.zip.GZIPOutputStream;
 
 import edu.wisc.cs.will.Boosting.RDN.RegressionRDNExample;
 import edu.wisc.cs.will.Boosting.RDN.RunBoostedRDN;
+import edu.wisc.cs.will.DataSetUtils.ArgSpec;
 import edu.wisc.cs.will.DataSetUtils.Example;
 import edu.wisc.cs.will.DataSetUtils.RegressionExample;
 import edu.wisc.cs.will.FOPC.Clause;
@@ -52,6 +53,7 @@ import edu.wisc.cs.will.FOPC.TreeStructuredTheory;
 import edu.wisc.cs.will.FOPC.TreeStructuredTheoryInteriorNode;
 import edu.wisc.cs.will.FOPC.TreeStructuredTheoryLeaf;
 import edu.wisc.cs.will.FOPC.TreeStructuredTheoryNode;
+import edu.wisc.cs.will.FOPC.Type;
 import edu.wisc.cs.will.FOPC_MLN_ILP_Parser.FileParser;
 import edu.wisc.cs.will.ILP.Regression.BranchStats;
 import edu.wisc.cs.will.ResThmProver.DefaultHornClauseContext;
@@ -68,6 +70,10 @@ import edu.wisc.cs.will.stdAIsearch.SearchResult;
 import edu.wisc.cs.will.stdAIsearch.SearchStrategy;
 import java.io.BufferedReader;
 import java.util.Arrays;
+import edu.wisc.cs.will.Refine.Refine;
+import java.util.HashMap;
+import java.util.Map;
+//import javafx.util.Pair;
 
 /**
  * @author shavlik
@@ -159,11 +165,13 @@ public class ILPouterLoop implements GleanerFileNameProvider {
 	private String         gleanerFileNameFlipFlopped    = null;  // Put the gleaner results for the flip-flopped case here.
 	private Gleaner        gleaner                       = null;  // These two hold on to gleaners when we do flip-flops.  The gleaner is 'really' stored in LearnOneClause.
 	private Gleaner        gleanerFlipFlopped            = null;
-    private String         annotationForRun              = null;
+	private String         annotationForRun              = null;
 
 	private boolean        checkpointEnabled             = false; // Write 'gleaner' files periodically.
 	private String         checkpointFileName            = null;  // Please don't use this directly.  Null indicates the use of a default value.
 	private String         checkpointFileNameFlipFlopped = null;
+        
+	private Refine refineFileVal = null;
 
 	// All of the fields below are now in the ILPouterLoopState object.
 	// Any information needed to restart a run in the middle (from the chkpt)
@@ -679,13 +687,27 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                         innerLoopTask.setBodyModes(newSetOfBodyModes);
                     }
 
-                    // If we are learning a tree-structured theory, then we continue where we left off.
-                    if (isRRR()) {
-                        innerLoopTask.performRRRsearch(learningTreeStructuredTheory ? savedBestNode : null);
-                    } else {
-                        SearchResult sr = innerLoopTask.performSearch(learningTreeStructuredTheory ? savedBestNode : null);
-                        innerLoopTask.needToCheckTheAdviceProcessor = false; // No need to do this at least until this "outer looper" is done.
-                        if (false) { Utils.println("Search result: " + sr); }
+                    // Set tree path
+                    TreeStructuredLearningTask       currentTask  = outerLoopState.getCurrentTreeLearningTask();
+                    TreeStructuredTheoryInteriorNode interiorNode = currentTask.getNode();
+                    int treeSize = interiorNode.returnBoolPath().size();
+                    boolean[] tree = new boolean[treeSize];
+                    for (int i = 0; i < interiorNode.returnBoolPath().size(); i++) {
+                        tree[i] = interiorNode.returnBoolPath().get(i);
+                    }
+                    
+                    // Searching or refining
+                    //if (refineFileVal == null || tree.length == 0 || !refineFileVal.containsRefineNode(tree))
+                    if (refineFileVal == null || !refineFileVal.containsRefineNode(tree))
+                    {
+                        // If we are learning a tree-structured theory, then we continue where we left off.
+                        if (isRRR()) {
+                            innerLoopTask.performRRRsearch(learningTreeStructuredTheory ? savedBestNode : null);
+                        } else {
+                            SearchResult sr = innerLoopTask.performSearch(learningTreeStructuredTheory ? savedBestNode : null);
+                            innerLoopTask.needToCheckTheAdviceProcessor = false; // No need to do this at least until this "outer looper" is done.
+                            if (false) { Utils.println("Search result: " + sr); }
+                        }
                     }
 
                     // Utils.println(innerLoopTask.reportSearchStats());
@@ -700,7 +722,96 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                     
                     Utils.println("\n% The best node found: " + bestNode); // TEMP
                     
-                    if (bestNode != null && bestNode != savedBestNode) { // Also need to check to make sure we didn't simply return the previous root when doing tree-structured learning.
+                    // Start refining if need
+                    if ((refineFileVal != null && refineFileVal.containsRefineNode(tree)) || (bestNode != null && bestNode != savedBestNode)) { // Also need to check to make sure we didn't simply return the previous root when doing tree-structured learning.
+                        boolean forceChildren = false;
+                        boolean forceLeftBranch = false;
+                        boolean forceRightBranch = false;
+                        if (refineFileVal != null)
+                        {
+                            HashMap<String, Term> dict = new HashMap<String, Term>();
+                            //SingleClauseNode parent = interiorNode.getSearchNodeThatLearnedTheClause();
+                            HandleFOPCstrings stringHandler = innerLoopTask.getStringHandler();
+                            if (refineFileVal.containsRefineNode(tree)) {
+                                forceChildren = true;
+                                forceLeftBranch = refineFileVal.getRefineNode(tree).getLeftBranch();
+                                forceRightBranch = refineFileVal.getRefineNode(tree).getRightBranch();
+                                SingleClauseNode newNode = null;
+                                if (tree.length == 0) {
+                                    Object[] target = refineFileVal.getRefineNode(tree).getTargetPredicate(); //Pair<String, String[]> target = refineFileVal.getRefineNode(tree).getTargetPredicate();
+//                                    List<Term> args = bestNode.getRootNode().literalAdded.getArguments();
+//                                    for (int i=0; i < args.size(); i++) {
+//                                        dict.put(target.getValue()[i], args.get(i));
+//                                    }
+//                                    newNode = bestNode.getRootNode();
+                                    // New
+                                    List<Type> typesPresent = new ArrayList<Type>(4);
+                                    Map<Type,List<Term>> typesMap   = new HashMap<Type,List<Term>>(4);  // Collect the existing constants and variables that go with each type. 
+                                    for (ArgSpec spec : innerLoopTask.targetArgSpecs.get(0)) {
+                                            Type type = spec.typeSpec.isaType;
+
+                                            List<Term> terms = typesMap.get(type);
+                                            if (terms != null) {
+                                                    terms.add(spec.arg);
+                                                    typesMap.put(type, terms);
+                                            } else { // This type not yet seen.
+                                                    List<Term> termsNew = new ArrayList<Term>(1);
+                                                    termsNew.add(spec.arg);
+                                                    typesMap.put(type, termsNew);
+                                                    typesPresent.add(type);
+                                            }
+                                    }
+                                    ArrayList<Term> arguments = new ArrayList<Term>();
+                                    for (int i=0; i < innerLoopTask.variablesInTargets.get(0).size(); i++) {
+                                        Term term = innerLoopTask.variablesInTargets.get(0).get(i);
+                                        String[] targetArgs = (String[]) target[1];
+                                        dict.put(targetArgs[i], term);
+                                        //dict.put(target.getValue()[i], term); //
+                                        arguments.add(term);
+                                    }
+                                    Literal lit = stringHandler.getLiteral(stringHandler.getPredicateName((String)target[0]), arguments);//(target.getKey()), arguments);
+                                    newNode = new SingleClauseRootNode(innerLoopTask, lit, innerLoopTask.targetArgSpecs.get(0), innerLoopTask.variablesInTargets.get(0), lit.predicateName.getTypeListForThisArity(lit.numberArgs()).get(0), typesPresent, typesMap);
+                                    //newNode.computeCoverage();
+                                    innerLoopTask.scorer.scoreThisNode(newNode);
+                                }else{
+                                    newNode = refineFileVal.getExtensionNode(tree);
+                                    dict = refineFileVal.getExtensionNodeVariables(tree);
+                                }
+                                refineFileVal.getRefineNode(tree).setSingleNoNode(newNode);
+                                refineFileVal.getRefineNode(tree).setSingleNoNodeVariables(dict);
+                                // Get body predicates
+                                //ArrayList<Pair<String, String[]>> body = refineFileVal.getRefineNode(tree).getPredicates();
+                                ArrayList<Object[]> body = refineFileVal.getRefineNode(tree).getPredicates();
+                                //for (Pair<String, String[]> pair : body) {
+                                for (Object[] pair : body) {
+                                    ArrayList<Term> arguments = new ArrayList<Term>();
+                                    for (String var : (String[])pair[1]) { //pair.getValue()) {
+                                        Term term = null;
+                                        if (dict.containsKey(var)) {
+                                            term = dict.get(var);
+                                        } else {
+                                            term = stringHandler.getVariableOrConstant(var, true);
+                                            dict.put(var, term);
+                                        }
+                                        //arguments.add(stringHandler.getVariableOrConstant(var));
+                                        arguments.add(term);
+                                    }
+                                    Literal lit = stringHandler.getLiteral(stringHandler.getPredicateName((String)pair[0]), arguments); //(pair.getKey()), arguments);
+                                    SingleClauseNode temp = newNode;
+                                    newNode = new SingleClauseNode(newNode, lit);
+                                    newNode.depthOfArgs = temp.depthOfArgs;
+                                    newNode.computeCoverage();
+                                    innerLoopTask.scorer.scoreThisNode(newNode);
+                                }
+                                refineFileVal.getRefineNode(tree).setSingleNode(newNode);
+                                refineFileVal.getRefineNode(tree).setSingleNodeVariables(dict);
+                                //innerLoopTask.scorer.scoreThisNode(newNode);
+                                //newNode.computeCoverage();
+                                bestNode = newNode;
+                            }
+                        }
+                        // ========================================
+                        //
                         Utils.println("\n% The best node found: " + bestNode);
                         List<Example> coveredPosExamplesThisCycle = innerLoopTask.collectPosExamplesCovered(bestNode);
                         List<Example> coveredNegExamplesThisCycle = innerLoopTask.collectNegExamplesCovered(bestNode);
@@ -766,8 +877,8 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                                 Utils.println("\n% New LOCAL clause: " + bestNode.getLocallyAddedClause() + "\n");
                             }
 
-                            TreeStructuredLearningTask       currentTask  = outerLoopState.getCurrentTreeLearningTask();
-                            TreeStructuredTheoryInteriorNode interiorNode = currentTask.getNode();
+                            //TreeStructuredLearningTask       currentTask  = outerLoopState.getCurrentTreeLearningTask();
+                            //TreeStructuredTheoryInteriorNode interiorNode = currentTask.getNode();
                             interiorNode.setSearchNodeThatLearnedTheClause(bestNode); // Be sure to set this before the next call.
                             interiorNode.setNodeTestFromFullNodeTest(newClause);
                             // Set the task used to learn this node.
@@ -780,9 +891,18 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             
                             TreeStructuredTheoryNode trueBranch;
                             TreeStructuredTheoryNode falseBranch;
-                            boolean goodEnoughFitTrueBranch  = atMaxDepth || bestNode.acceptableScoreTrueBranch( outerLoopState.maxAcceptableNodeScoreToStop);
-                            boolean goodEnoughFitFalseBranch = atMaxDepth || bestNode.acceptableScoreFalseBranch(outerLoopState.maxAcceptableNodeScoreToStop);
-
+                            
+                            // Force chidren node or leaf in refining
+                            boolean goodEnoughFitTrueBranch;
+                            boolean goodEnoughFitFalseBranch;
+                            if (forceChildren) {
+                                goodEnoughFitTrueBranch = forceLeftBranch;
+                                goodEnoughFitFalseBranch = forceRightBranch;
+                            } else {
+                                goodEnoughFitTrueBranch  = atMaxDepth || bestNode.acceptableScoreTrueBranch( outerLoopState.maxAcceptableNodeScoreToStop);
+                                goodEnoughFitFalseBranch = atMaxDepth || bestNode.acceptableScoreFalseBranch(outerLoopState.maxAcceptableNodeScoreToStop);
+                            }
+                            
                             List<Example> trueBranchPosExamples  = null;
                             List<Example> falseBranchPosExamples = null;
                             List<Example> trueBranchNegExamples  = null;
@@ -869,10 +989,10 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             // Since getLength() includes the head, we see if current length EXCEEDS the maxTreeDepthInLiterals.
                             // Since 'maxTreeDepthInLiterals' includes bridgers, count them as well.
                             if (atMaxDepth) { Utils.println("%   Creating a TRUE-branch and FALSE-branch leaves because level = "  + interiorNode.getLevel() + " >= " + maxTreeDepthInInteriorNodes); }
-                            if (atMaxDepth || goodEnoughFitTrueBranch ||
+                            if ((forceChildren && !forceLeftBranch) || (!forceChildren && (atMaxDepth || goodEnoughFitTrueBranch ||
                                 newClause.getLength()   >  maxTreeDepthInLiterals || // We use '>' here since we don't count the head literal in depth.
                                 wgtedCountTrueBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
-                                wgtedCountTrueBranchPos <  outerLoopState.getOverallMinPosWeight()) {
+                                wgtedCountTrueBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
                                 
 
                                 if (!atMaxDepth && LearnOneClause.debugLevel > -10) {
@@ -887,6 +1007,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                                 } else {
                                 	leaf = createLeafNodeFromCurrentExamples(meanTrue);
                                 }
+                                
                                 trueBranch = new TreeStructuredTheoryLeaf(wgtedCountTrueBranchPos, wgtedCountTrueBranchNeg, bestNode.getVarianceTrueBranch(), leaf, Example.makeLabel(trueBranchPosExamples));
                             } else {
                                 // Have another learning task.
@@ -928,10 +1049,10 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             	meanVecFalse = bestNode.meanVectorIfFalse();
                             }
                             // No need to check max clause length (maxTreeDepthInLiterals) since that should have been checked at parent's call (since no literals added for FALSE branch).
-                            if (atMaxDepth || goodEnoughFitFalseBranch ||
+                            if ((forceChildren && !forceRightBranch) || (!forceChildren && (atMaxDepth || goodEnoughFitFalseBranch ||
                             //	newClause.getLength()   >  maxTreeDepthInLiterals  ||
                                 wgtedCountFalseBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
-                                wgtedCountFalseBranchPos <  outerLoopState.getOverallMinPosWeight()) {
+                                wgtedCountFalseBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
           
                                 Term leaf = null; 
                                 if (learnMultiValPredicates) {
@@ -1022,7 +1143,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                         }
 
                         if (learningTreeStructuredTheory) { // Need to make the current node a leaf.
-                            TreeStructuredLearningTask currentTask = outerLoopState.getCurrentTreeLearningTask();
+                            //TreeStructuredLearningTask currentTask = outerLoopState.getCurrentTreeLearningTask();
                             createTreeStructuredLearningTaskLeaf(currentTask);
                         }
                     }
@@ -2441,6 +2562,23 @@ public class ILPouterLoop implements GleanerFileNameProvider {
 	public void setMaxTreeDepth(int maxTreeDepth) {
 		this.maxTreeDepthInInteriorNodes = Math.max(1, maxTreeDepth);
 	}
+        
+        /**
+	 * @param refineDir the refineDir to set
+	 */
+	public void setRefineFileVal(Refine refineFileVal) {
+		this.refineFileVal = refineFileVal;
+	}
+        
+        /**
+	 * @param refineDir the refineDir to set
+	 */
+        public void setRefineTree(int model) {
+                if (this.refineFileVal != null)
+                {
+                    this.refineFileVal.setTree(model);
+                }
+        }
 
 
     // </editor-fold>

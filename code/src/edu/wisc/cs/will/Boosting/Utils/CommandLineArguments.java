@@ -39,6 +39,9 @@ public class CommandLineArguments {
 	public static final String currentModelMarker   = "marker"; // Added by JWS so that repeated runs can get different markers (might want to do this for more/all files).
 	public static final String currentResultsMarker = "resultsFileMarker";
 	
+        public static final String refineFile = "refine";
+	private String refineFileVal= null;
+        
 	public static final String useMLN = "mln";
 	private boolean learnMLN=false;
 
@@ -695,6 +698,10 @@ public class CommandLineArguments {
 				setModelDirVal(args[++i]);
 				continue; 
 			}
+                        if (argMatches(args[i], refineFile)) {
+				setRefineFileVal(args[++i]);
+				continue;
+			}
 			if (argMatches(args[i], resultsDir)) {
 				setResultsDirVal(args[++i]);
 				continue; 
@@ -956,6 +963,19 @@ public class CommandLineArguments {
 		checked_trainDirVal = true;
 		if (!(trainDirVal.endsWith("/") || trainDirVal.endsWith("\\"))) {  trainDirVal += "/"; }
 		this.trainDirVal = trainDirVal;
+	}
+        /**
+	 * @return the refineDirVal
+	 */
+	public String getRefineFileVal() {
+		return refineFileVal;
+	}
+        /**
+	 * @param refineFileVal the refineFileVal to set
+	 */
+	public void setRefineFileVal(String refineFileVal) {
+		//if (!(refineDirVal.endsWith("/") || refineDirVal.endsWith("\\"))) {  }
+		this.refineFileVal = refineFileVal;
 	}
 	/**
 	 * @return the useYapVal

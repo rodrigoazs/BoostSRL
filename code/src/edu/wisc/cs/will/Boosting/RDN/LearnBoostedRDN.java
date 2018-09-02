@@ -393,6 +393,9 @@ public class LearnBoostedRDN {
 				setup.getOuterLooper().setPostfixForExtractedRules("");
 			}
 			
+                        // Set tree model number in Refinement process
+                        setup.getOuterLooper().setRefineTree(i);
+
 			thry = setup.getOuterLooper().executeOuterLoop();
 
 			if (thry instanceof TreeStructuredTheory) {
