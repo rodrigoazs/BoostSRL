@@ -692,9 +692,15 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                     TreeStructuredTheoryInteriorNode interiorNode = currentTask.getNode();
                     int treeSize = interiorNode.returnBoolPath().size();
                     boolean[] tree = new boolean[treeSize];
+                    boolean[] trueTree = new boolean[treeSize+1];
+                    boolean[] falseTree = new boolean[treeSize+1];
                     for (int i = 0; i < interiorNode.returnBoolPath().size(); i++) {
                         tree[i] = interiorNode.returnBoolPath().get(i);
+                        trueTree[i] = interiorNode.returnBoolPath().get(i);
+                        falseTree[i] = interiorNode.returnBoolPath().get(i);
                     }
+                    trueTree[treeSize] = true;
+                    falseTree[treeSize] = false;
                     
                     // Searching or refining
                     //if (refineFileVal == null || tree.length == 0 || !refineFileVal.containsRefineNode(tree))
@@ -724,7 +730,9 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                     
                     // Start refining if need
                     if ((refineFileVal != null && refineFileVal.containsRefineNode(tree)) || (bestNode != null && bestNode != savedBestNode)) { // Also need to check to make sure we didn't simply return the previous root when doing tree-structured learning.
-                        boolean forceChildren = false;
+                        //boolean forceChildren = false;
+                        boolean forceLeftChildren = false;
+                        boolean forceRightChildren = false;
                         boolean forceLeftBranch = false;
                         boolean forceRightBranch = false;
                         if (refineFileVal != null)
@@ -733,9 +741,11 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             //SingleClauseNode parent = interiorNode.getSearchNodeThatLearnedTheClause();
                             HandleFOPCstrings stringHandler = innerLoopTask.getStringHandler();
                             if (refineFileVal.containsRefineNode(tree)) {
-                                forceChildren = true;
+                                //forceChildren = true;
                                 forceLeftBranch = refineFileVal.getRefineNode(tree).getLeftBranch();
                                 forceRightBranch = refineFileVal.getRefineNode(tree).getRightBranch();
+                                forceLeftChildren = refineFileVal.containsRefineNode(trueTree) || !forceLeftBranch;
+                                forceRightChildren = refineFileVal.containsRefineNode(falseTree) || !forceRightBranch;
                                 SingleClauseNode newNode = null;
                                 if (tree.length == 0) {
                                     Object[] target = refineFileVal.getRefineNode(tree).getTargetPredicate(); //Pair<String, String[]> target = refineFileVal.getRefineNode(tree).getTargetPredicate();
@@ -895,13 +905,8 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             // Force chidren node or leaf in refining
                             boolean goodEnoughFitTrueBranch;
                             boolean goodEnoughFitFalseBranch;
-                            if (forceChildren) {
-                                goodEnoughFitTrueBranch = forceLeftBranch;
-                                goodEnoughFitFalseBranch = forceRightBranch;
-                            } else {
-                                goodEnoughFitTrueBranch  = atMaxDepth || bestNode.acceptableScoreTrueBranch( outerLoopState.maxAcceptableNodeScoreToStop);
-                                goodEnoughFitFalseBranch = atMaxDepth || bestNode.acceptableScoreFalseBranch(outerLoopState.maxAcceptableNodeScoreToStop);
-                            }
+                            goodEnoughFitTrueBranch = atMaxDepth || bestNode.acceptableScoreTrueBranch( outerLoopState.maxAcceptableNodeScoreToStop);
+                            goodEnoughFitFalseBranch = atMaxDepth || bestNode.acceptableScoreFalseBranch(outerLoopState.maxAcceptableNodeScoreToStop);
                             
                             List<Example> trueBranchPosExamples  = null;
                             List<Example> falseBranchPosExamples = null;
@@ -989,7 +994,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             // Since getLength() includes the head, we see if current length EXCEEDS the maxTreeDepthInLiterals.
                             // Since 'maxTreeDepthInLiterals' includes bridgers, count them as well.
                             if (atMaxDepth) { Utils.println("%   Creating a TRUE-branch and FALSE-branch leaves because level = "  + interiorNode.getLevel() + " >= " + maxTreeDepthInInteriorNodes); }
-                            if ((forceChildren && (!forceLeftBranch || wgtedCountTrueBranchPos == 0)) || (!forceChildren && (atMaxDepth || goodEnoughFitTrueBranch ||
+                            if ((forceLeftChildren && (!forceLeftBranch || wgtedCountTrueBranchPos == 0)) || (!forceLeftChildren && (atMaxDepth || goodEnoughFitTrueBranch ||
                                 newClause.getLength()   >  maxTreeDepthInLiterals || // We use '>' here since we don't count the head literal in depth.
                                 wgtedCountTrueBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
                                 wgtedCountTrueBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
@@ -1049,7 +1054,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             	meanVecFalse = bestNode.meanVectorIfFalse();
                             }
                             // No need to check max clause length (maxTreeDepthInLiterals) since that should have been checked at parent's call (since no literals added for FALSE branch).
-                            if ((forceChildren && (!forceRightBranch || wgtedCountFalseBranchPos == 0)) || (!forceChildren && (atMaxDepth || goodEnoughFitFalseBranch ||
+                            if ((forceRightChildren && (!forceRightBranch || wgtedCountFalseBranchPos == 0)) || (!forceRightChildren && (atMaxDepth || goodEnoughFitFalseBranch ||
                             //	newClause.getLength()   >  maxTreeDepthInLiterals  ||
                                 wgtedCountFalseBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
                                 wgtedCountFalseBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
@@ -2563,6 +2568,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
 		this.maxTreeDepthInInteriorNodes = Math.max(1, maxTreeDepth);
 	}
         
+        // Rodrigo
         /**
 	 * @param refineDir the refineDir to set
 	 */
@@ -2570,6 +2576,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
 		this.refineFileVal = refineFileVal;
 	}
         
+        // Rodrigo
         /**
 	 * @param refineDir the refineDir to set
 	 */
