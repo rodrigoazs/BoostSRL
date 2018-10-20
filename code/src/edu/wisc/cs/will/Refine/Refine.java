@@ -93,6 +93,19 @@ public class Refine {
             this.Tree = model;
         }
         
+        public int getTree() {
+            return this.Tree;
+        }
+        
+        public String getPath(boolean[] tree)
+        {
+            ArrayList<String> str = new ArrayList<String>();
+            for (boolean bool : tree) {
+                str.add(String.valueOf(bool));
+            }
+            return String.join(",", str);
+        }
+        
 //        public RefineNode getParentValidRefineNode(boolean[] tree) {
 //                boolean[] newTree = Arrays.copyOfRange(tree, 0, tree.length-1);
 //                while(newTree.length > 0 && newTree[newTree.length-1] == false)

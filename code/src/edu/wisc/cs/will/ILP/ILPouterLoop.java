@@ -902,6 +902,9 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             TreeStructuredTheoryNode trueBranch;
                             TreeStructuredTheoryNode falseBranch;
                             
+                            // Print tree and node path
+                            Utils.println("% Path: " + Integer.toString(refineFileVal.getTree()) + ";" + refineFileVal.getPath(tree));
+                            
                             // Force chidren node or leaf in refining
                             boolean goodEnoughFitTrueBranch;
                             boolean goodEnoughFitFalseBranch;
