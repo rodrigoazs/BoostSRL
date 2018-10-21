@@ -172,6 +172,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
 	private String         checkpointFileNameFlipFlopped = null;
         
 	private Refine refineFileVal = null;
+        private int treeNumber = 0;
 
 	// All of the fields below are now in the ILPouterLoopState object.
 	// Any information needed to restart a run in the middle (from the chkpt)
@@ -903,7 +904,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             TreeStructuredTheoryNode falseBranch;
                             
                             // Print tree and node path
-                            Utils.println("% Path: " + Integer.toString(refineFileVal.getTree()) + ";" + refineFileVal.getPath(tree));
+                            Utils.println("% Path: " + Integer.toString(treeNumber) + ";" + getPath(tree));
                             
                             // Force chidren node or leaf in refining
                             boolean goodEnoughFitTrueBranch;
@@ -2588,6 +2589,19 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                 {
                     this.refineFileVal.setTree(model);
                 }
+                this.treeNumber = model;
+        }
+        
+        /**
+	 * @param getPath 
+	 */
+        public String getPath(boolean[] tree)
+        {
+            ArrayList<String> str = new ArrayList<String>();
+            for (boolean bool : tree) {
+                str.add(String.valueOf(bool));
+            }
+            return String.join(",", str);
         }
 
 
