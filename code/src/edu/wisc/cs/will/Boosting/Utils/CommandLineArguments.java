@@ -42,6 +42,9 @@ public class CommandLineArguments {
         public static final String refineFile = "refine";
 	private String refineFileVal= null;
         
+        public static final String transferFile = "transfer";
+	private String transferFileVal= null;
+        
 	public static final String useMLN = "mln";
 	private boolean learnMLN=false;
 
@@ -702,6 +705,10 @@ public class CommandLineArguments {
 				setRefineFileVal(args[++i]);
 				continue;
 			}
+                        if (argMatches(args[i], transferFile)) {
+				setTransferFileVal(args[++i]);
+				continue;
+			}
 			if (argMatches(args[i], resultsDir)) {
 				setResultsDirVal(args[++i]);
 				continue; 
@@ -977,6 +984,20 @@ public class CommandLineArguments {
 		//if (!(refineDirVal.endsWith("/") || refineDirVal.endsWith("\\"))) {  }
 		this.refineFileVal = refineFileVal;
 	}
+        
+        /**
+	 * @return the transferDirVal
+	 */
+        public String getTransferFileVal() {
+		return transferFileVal;
+	}
+        /**
+	 * @param transferFileVal the transferFileVal to set
+	 */
+	public void setTransferFileVal(String transferFileVal) {
+		this.transferFileVal = transferFileVal;
+	}
+        
 	/**
 	 * @return the useYapVal
 	 */

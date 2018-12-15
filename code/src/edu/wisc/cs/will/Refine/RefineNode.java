@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 
 /**
  *
- * @author 317005
+ * @author Rodrigo Azevedo
  */
 public class RefineNode {
         private String node;
@@ -35,6 +35,10 @@ public class RefineNode {
         
         public String getNode() {
             return node;
+        }
+        
+        public void setNode(String node) {
+            this.node = node;
         }
         
         public void setSingleNode(SingleClauseNode node) {
@@ -106,6 +110,14 @@ public class RefineNode {
         
         public boolean getRightBranch() {
             return rightBranch;
+        }
+        
+        public void setLeftBranch(boolean leftBranch) {
+            this.leftBranch = leftBranch;
+        }
+        
+        public void setRightBranch(boolean rightBranch) {
+            this.rightBranch = rightBranch;
         }
 
 }

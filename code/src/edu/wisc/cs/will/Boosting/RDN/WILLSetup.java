@@ -70,6 +70,7 @@ import edu.wisc.cs.will.stdAIsearch.BestFirstSearch;
 import edu.wisc.cs.will.stdAIsearch.SearchInterrupted;
 import edu.wisc.cs.will.stdAIsearch.SearchStrategy;
 import edu.wisc.cs.will.Refine.Refine;
+import edu.wisc.cs.will.Transfer.Transfer;
 import java.io.BufferedReader;
 
 /**
@@ -1713,7 +1714,14 @@ public final class WILLSetup {
                 if (refineFile != null) {
                         Refine refine = getRefine(refineFile);
                         getOuterLooper().setRefineFileVal(refine);
-                }		
+                }
+
+		// Read and set transfer file
+		String transferFile = cmdArgs.getTransferFileVal();
+                if (transferFile != null) {
+                        Transfer transfer = getTransfer(transferFile);
+                        getOuterLooper().setTransferFileVal(transfer);
+                }
 		
 		getOuterLooper().innerLoopTask.maxFreeBridgersInBody = 1; // Math.max(2, outerLooper.getMaxNumberOfLiteralsAtAnInteriorNode()); // This is the body of ONE node.  By allowing more bridgers that literals we can, say, create comparators between two extracted values.
 		// Add 1 here since the root has literals but is at depth 0.
@@ -1846,7 +1854,7 @@ public final class WILLSetup {
                     String line = null;
                     while((line = reader.readLine()) != null) {
                         String[] split = line.split(";");
-                        refine.addRefine(Integer.parseInt(split[0]), split[1], split[2], Boolean.parseBoolean(split[3]), Boolean.parseBoolean(split[4]));
+                        refine.addNode(Integer.parseInt(split[0]), split[1], split[2], Boolean.parseBoolean(split[3]), Boolean.parseBoolean(split[4]));
                     }
                 }catch (FileNotFoundException ex){
                     //System.out.println(ex);
@@ -1855,5 +1863,24 @@ public final class WILLSetup {
                     //System.out.println(ex);
                 }
                 return refine;
+        }
+        
+	// Function responsible for reading transfer file
+        private Transfer getTransfer(String filePath) {
+                Transfer transfer = new Transfer();
+                try {
+                    //getOuterLooper().setRefineFileVal(cmdArgs.getRefineFileVal());
+                    BufferedReader reader = new BufferedReader(new CondorFileReader(filePath));
+                    String line = null;
+                        while((line = reader.readLine()) != null) {
+                        transfer.readLine(line);
+                    }
+                }catch (FileNotFoundException ex){
+                    //System.out.println(ex);
+                }
+                catch (IOException ex){
+                    //System.out.println(ex);
+                }
+                return transfer;
         }
 }

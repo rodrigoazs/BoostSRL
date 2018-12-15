@@ -268,7 +268,7 @@ public class LearnBoostedRDN {
 		if (i >= maxTrees && !cmdArgs.isUseYapVal()) { 
 			addPrologCodeForUsingAllTrees(rdn, i); 
 		}
-		CombinedTree.setFinalRegTree(getWILLTree(CombinedTree.getFinalDataSet(),0,10)); //kaushik
+		//CombinedTree.setFinalRegTree(getWILLTree(CombinedTree.getFinalDataSet(),0,10)); //kaushik
 
 	}
 

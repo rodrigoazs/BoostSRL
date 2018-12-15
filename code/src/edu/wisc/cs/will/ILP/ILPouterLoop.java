@@ -71,6 +71,7 @@ import edu.wisc.cs.will.stdAIsearch.SearchStrategy;
 import java.io.BufferedReader;
 import java.util.Arrays;
 import edu.wisc.cs.will.Refine.Refine;
+import edu.wisc.cs.will.Transfer.Transfer;
 import java.util.HashMap;
 import java.util.Map;
 //import javafx.util.Pair;
@@ -172,6 +173,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
 	private String         checkpointFileNameFlipFlopped = null;
         
 	private Refine refineFileVal = null;
+	private Transfer transferFileVal = null;
         private int treeNumber = 0;
 
 	// All of the fields below are now in the ILPouterLoopState object.
@@ -750,6 +752,10 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                                 SingleClauseNode newNode = null;
                                 if (tree.length == 0) {
                                     Object[] target = refineFileVal.getRefineNode(tree).getTargetPredicate(); //Pair<String, String[]> target = refineFileVal.getRefineNode(tree).getTargetPredicate();
+                                    // Transfer enabled
+                                    if (transferFileVal != null) {
+                                        target = transferFileVal.transferHead(target);
+                                    }
 //                                    List<Term> args = bestNode.getRootNode().literalAdded.getArguments();
 //                                    for (int i=0; i < args.size(); i++) {
 //                                        dict.put(target.getValue()[i], args.get(i));
@@ -793,26 +799,70 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                                 // Get body predicates
                                 //ArrayList<Pair<String, String[]>> body = refineFileVal.getRefineNode(tree).getPredicates();
                                 ArrayList<Object[]> body = refineFileVal.getRefineNode(tree).getPredicates();
-                                //for (Pair<String, String[]> pair : body) {
-                                for (Object[] pair : body) {
-                                    ArrayList<Term> arguments = new ArrayList<Term>();
-                                    for (String var : (String[])pair[1]) { //pair.getValue()) {
-                                        Term term = null;
-                                        if (dict.containsKey(var)) {
-                                            term = dict.get(var);
-                                        } else {
-                                            term = stringHandler.getVariableOrConstant(var, true);
-                                            dict.put(var, term);
+                                if (transferFileVal != null) {
+                                    ArrayList<String> predsUnmapped;
+                                    boolean repeat;
+                                    do {
+                                        body = refineFileVal.getRefineNode(tree).getPredicates();
+                                        predsUnmapped = transferFileVal.predicatesUnmapped(body);
+                                        repeat = false;
+                                        // if all predicates were already mapped
+                                        if (predsUnmapped.size() == 0) {
+                                            //for (Pair<String, String[]> pair : body) {
+                                            body = transferFileVal.transferBody(body);
+                                            // if mapped to empty node
+                                            if (body.size() == 0)
+                                            {
+                                                // node transferred to empty
+                                                transferFileVal.promoteNode(refineFileVal.getRefineTreeNode(tree));
+                                                // update force booleans
+                                                forceLeftBranch = refineFileVal.getRefineNode(tree).getLeftBranch();
+                                                forceRightBranch = refineFileVal.getRefineNode(tree).getRightBranch();
+                                                forceLeftChildren = refineFileVal.containsRefineNode(trueTree) || !forceLeftBranch;
+                                                forceRightChildren = refineFileVal.containsRefineNode(falseTree) || !forceRightBranch;
+                                                repeat = true;
+                                            }else{
+                                                newNode = generateNodeFromBody(body, dict, stringHandler, newNode);
+                                            }
+                                        }else{
+                                            // need to search for best split
+                                            Object[] bestLegalMap = null;
+                                            SingleClauseNode bestMappedNode = null;
+                                            ArrayList<Object[]> currentBody = null;
+                                            ArrayList<Object[]> legalMaps = transferFileVal.legalMappings(predsUnmapped);
+                                            Utils.println("\n% Finding mapping for predicates: " + Arrays.toString(predsUnmapped.toArray(new String[predsUnmapped.size()])));
+                                            Utils.println("% Number of legal mappings: " + legalMaps.size());
+                                            for (Object[] legalMap : legalMaps) 
+                                            {
+                                                SingleClauseNode searchNode = newNode;
+                                                currentBody = transferFileVal.transferBodyGivenMapping(body, legalMap);
+                                                if (currentBody.size() > 0) {
+                                                    searchNode = generateNodeFromBody(currentBody, dict, stringHandler, searchNode);
+                                                    if (bestMappedNode == null || searchNode.score > bestMappedNode.score) {
+                                                        bestMappedNode = searchNode;
+                                                        bestLegalMap = legalMap;
+                                                    }
+                                                }
+                                            }
+                                            if (bestMappedNode != null) {
+                                                transferFileVal.setMapping(bestLegalMap);
+                                                newNode = bestMappedNode;
+                                            }else{
+                                                // no mapping found (empty node)
+                                                transferFileVal.promoteNode(refineFileVal.getRefineTreeNode(tree));
+                                                // need to map predicates to null
+                                                transferFileVal.addNullMapping(predsUnmapped);
+                                                // update force booleans
+                                                forceLeftBranch = refineFileVal.getRefineNode(tree).getLeftBranch();
+                                                forceRightBranch = refineFileVal.getRefineNode(tree).getRightBranch();
+                                                forceLeftChildren = refineFileVal.containsRefineNode(trueTree) || !forceLeftBranch;
+                                                forceRightChildren = refineFileVal.containsRefineNode(falseTree) || !forceRightBranch;
+                                                repeat = true;
+                                            }
                                         }
-                                        //arguments.add(stringHandler.getVariableOrConstant(var));
-                                        arguments.add(term);
-                                    }
-                                    Literal lit = stringHandler.getLiteral(stringHandler.getPredicateName((String)pair[0]), arguments); //(pair.getKey()), arguments);
-                                    SingleClauseNode temp = newNode;
-                                    newNode = new SingleClauseNode(newNode, lit);
-                                    newNode.depthOfArgs = temp.depthOfArgs;
-                                    newNode.computeCoverage();
-                                    innerLoopTask.scorer.scoreThisNode(newNode);
+                                    } while (repeat && refineFileVal.containsRefineNode(tree));
+                                }else{
+                                    newNode = generateNodeFromBody(body, dict, stringHandler, newNode);
                                 }
                                 refineFileVal.getRefineNode(tree).setSingleNode(newNode);
                                 refineFileVal.getRefineNode(tree).setSingleNodeVariables(dict);
@@ -998,7 +1048,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             // Since getLength() includes the head, we see if current length EXCEEDS the maxTreeDepthInLiterals.
                             // Since 'maxTreeDepthInLiterals' includes bridgers, count them as well.
                             if (atMaxDepth) { Utils.println("%   Creating a TRUE-branch and FALSE-branch leaves because level = "  + interiorNode.getLevel() + " >= " + maxTreeDepthInInteriorNodes); }
-                            if ((forceLeftChildren && (!forceLeftBranch || wgtedCountTrueBranchPos == 0)) || (!forceLeftChildren && (atMaxDepth || goodEnoughFitTrueBranch ||
+                            if (atMaxDepth || (forceLeftChildren && (!forceLeftBranch || wgtedCountTrueBranchPos == 0)) || (!forceLeftChildren && (atMaxDepth || goodEnoughFitTrueBranch ||
                                 newClause.getLength()   >  maxTreeDepthInLiterals || // We use '>' here since we don't count the head literal in depth.
                                 wgtedCountTrueBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
                                 wgtedCountTrueBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
@@ -1058,7 +1108,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             	meanVecFalse = bestNode.meanVectorIfFalse();
                             }
                             // No need to check max clause length (maxTreeDepthInLiterals) since that should have been checked at parent's call (since no literals added for FALSE branch).
-                            if ((forceRightChildren && (!forceRightBranch || wgtedCountFalseBranchPos == 0)) || (!forceRightChildren && (atMaxDepth || goodEnoughFitFalseBranch ||
+                            if (atMaxDepth || (forceRightChildren && (!forceRightBranch || wgtedCountFalseBranchPos == 0)) || (!forceRightChildren && (atMaxDepth || goodEnoughFitFalseBranch ||
                             //	newClause.getLength()   >  maxTreeDepthInLiterals  ||
                                 wgtedCountFalseBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
                                 wgtedCountFalseBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
@@ -2580,6 +2630,13 @@ public class ILPouterLoop implements GleanerFileNameProvider {
 		this.refineFileVal = refineFileVal;
 	}
         
+        /**
+	 * @param transferDir the transferDir to set
+	 */
+	public void setTransferFileVal(Transfer transferFileVal) {
+		this.transferFileVal = transferFileVal;
+	}
+        
         // Rodrigo
         /**
 	 * @param refineDir the refineDir to set
@@ -2604,6 +2661,29 @@ public class ILPouterLoop implements GleanerFileNameProvider {
             return String.join(",", str);
         }
 
+        public SingleClauseNode generateNodeFromBody(ArrayList<Object[]> body, HashMap<String, Term> dict, HandleFOPCstrings stringHandler, SingleClauseNode newNode) throws SearchInterrupted {
+            for (Object[] pair : body) {
+                ArrayList<Term> arguments = new ArrayList<Term>();
+                for (String var : (String[])pair[1]) { //pair.getValue()) {
+                    Term term = null;
+                    if (dict.containsKey(var)) {
+                        term = dict.get(var);
+                    } else {
+                        term = stringHandler.getVariableOrConstant(var, true);
+                        dict.put(var, term);
+                    }
+                    //arguments.add(stringHandler.getVariableOrConstant(var));
+                    arguments.add(term);
+                }
+                Literal lit = stringHandler.getLiteral(stringHandler.getPredicateName((String)pair[0]), arguments); //(pair.getKey()), arguments);
+                SingleClauseNode temp = newNode;
+                newNode = new SingleClauseNode(newNode, lit);
+                newNode.depthOfArgs = temp.depthOfArgs;
+                newNode.computeCoverage();
+                innerLoopTask.scorer.scoreThisNode(newNode);
+            }
+            return newNode;
+        }
 
     // </editor-fold>
 
