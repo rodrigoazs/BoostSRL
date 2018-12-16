@@ -46,17 +46,17 @@ public class Refine {
                 rule = new RefineNode(node, leftBranch, rightBranch);
                 for (String p : path) {
                     if (p.equals("true")) {
-                        RefineTreeNode left = current.getLeftBranch();
+                        RefineTreeNode left = current.getLeftNode();
                         if (left == null) {
                             left = new RefineTreeNode();
-                            current.setLeftBranch(left);
+                            current.setLeftNode(left);
                         }
                         current = left;
                     }else{
-                        RefineTreeNode right = current.getRightBranch();
+                        RefineTreeNode right = current.getRightNode();
                         if (right == null) {
                             right = new RefineTreeNode();
-                            current.setRightBranch(right);
+                            current.setRightNode(right);
                         }
                         current = right;
                     }
@@ -86,9 +86,9 @@ public class Refine {
             RefineTreeNode current = refines2.get(Integer.toString(this.Tree));
             for (boolean p : tree) {
                 if (p) {
-                    current = current.getLeftBranch();
+                    current = current.getLeftNode();
                 }else{
-                    current = current.getRightBranch();
+                    current = current.getRightNode();
                 }
             }
             return current.getNode();
@@ -106,9 +106,9 @@ public class Refine {
             RefineTreeNode current = refines2.get(Integer.toString(this.Tree));
             for (boolean p : tree) {
                 if (p) {
-                    current = current.getLeftBranch();
+                    current = current.getLeftNode();
                 }else{
-                    current = current.getRightBranch();
+                    current = current.getRightNode();
                 }
             }
             return current;
@@ -129,7 +129,8 @@ public class Refine {
         public boolean containsRefineNode(boolean[] tree) {
             if (tree.length == 0)
             {
-                return refines2.containsKey(Integer.toString(this.Tree)) && refines2.get(Integer.toString(this.Tree)).getNode() != null;
+                
+                return refines2.containsKey(Integer.toString(this.Tree)) && refines2.get(Integer.toString(this.Tree)) != null && refines2.get(Integer.toString(this.Tree)).getNode() != null;
             }
             RefineTreeNode current = refines2.get(Integer.toString(this.Tree));
             if (current == null)
@@ -138,15 +139,15 @@ public class Refine {
             }
             for (boolean p : tree) {
                 if (p) {
-                    if (current.getLeftBranch() == null) {
+                    if (current.getLeftNode() == null) {
                         return false;
                     }
-                    current = current.getLeftBranch();
+                    current = current.getLeftNode();
                 }else{
-                    if (current.getRightBranch() == null) {
+                    if (current.getRightNode() == null) {
                         return false;
                     }
-                    current = current.getRightBranch();
+                    current = current.getRightNode();
                 }
             }
             return current.getNode() != null;

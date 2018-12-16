@@ -705,6 +705,12 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                     trueTree[treeSize] = true;
                     falseTree[treeSize] = false;
                     
+                    /*if (refineFileVal != null){
+                        Utils.println("% Tree: " + refineFileVal.getTree());
+                        Utils.println("% Tree path: " + Arrays.toString(tree));
+                        Utils.println("% containsRefineNode: " + refineFileVal.containsRefineNode(tree)); 
+                    }*/
+                    
                     // Searching or refining
                     //if (refineFileVal == null || tree.length == 0 || !refineFileVal.containsRefineNode(tree))
                     if (refineFileVal == null || !refineFileVal.containsRefineNode(tree))
@@ -815,12 +821,17 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                                             {
                                                 // node transferred to empty
                                                 transferFileVal.promoteNode(refineFileVal.getRefineTreeNode(tree));
-                                                // update force booleans
-                                                forceLeftBranch = refineFileVal.getRefineNode(tree).getLeftBranch();
-                                                forceRightBranch = refineFileVal.getRefineNode(tree).getRightBranch();
-                                                forceLeftChildren = refineFileVal.containsRefineNode(trueTree) || !forceLeftBranch;
-                                                forceRightChildren = refineFileVal.containsRefineNode(falseTree) || !forceRightBranch;
-                                                repeat = true;
+                                                if (refineFileVal.containsRefineNode(tree)){
+                                                    // update force booleans
+                                                    forceLeftBranch = refineFileVal.getRefineNode(tree).getLeftBranch();
+                                                    forceRightBranch = refineFileVal.getRefineNode(tree).getRightBranch();
+                                                    forceLeftChildren = refineFileVal.containsRefineNode(trueTree) || !forceLeftBranch;
+                                                    forceRightChildren = refineFileVal.containsRefineNode(falseTree) || !forceRightBranch;
+                                                    repeat = true;
+                                                }else{
+                                                    // force leaf
+                                                    newNode = null;
+                                                }
                                             }else{
                                                 newNode = generateNodeFromBody(body, dict, stringHandler, newNode);
                                             }
@@ -852,347 +863,363 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                                                 transferFileVal.promoteNode(refineFileVal.getRefineTreeNode(tree));
                                                 // need to map predicates to null
                                                 transferFileVal.addNullMapping(predsUnmapped);
-                                                // update force booleans
-                                                forceLeftBranch = refineFileVal.getRefineNode(tree).getLeftBranch();
-                                                forceRightBranch = refineFileVal.getRefineNode(tree).getRightBranch();
-                                                forceLeftChildren = refineFileVal.containsRefineNode(trueTree) || !forceLeftBranch;
-                                                forceRightChildren = refineFileVal.containsRefineNode(falseTree) || !forceRightBranch;
-                                                repeat = true;
+                                                if (refineFileVal.containsRefineNode(tree)){
+                                                    // update force booleans
+                                                    forceLeftBranch = refineFileVal.getRefineNode(tree).getLeftBranch();
+                                                    forceRightBranch = refineFileVal.getRefineNode(tree).getRightBranch();
+                                                    forceLeftChildren = refineFileVal.containsRefineNode(trueTree) || !forceLeftBranch;
+                                                    forceRightChildren = refineFileVal.containsRefineNode(falseTree) || !forceRightBranch;
+                                                    repeat = true;
+                                                }else{
+                                                    // force leaf
+                                                    newNode = null;
+                                                }
                                             }
                                         }
                                     } while (repeat && refineFileVal.containsRefineNode(tree));
                                 }else{
                                     newNode = generateNodeFromBody(body, dict, stringHandler, newNode);
                                 }
-                                refineFileVal.getRefineNode(tree).setSingleNode(newNode);
-                                refineFileVal.getRefineNode(tree).setSingleNodeVariables(dict);
+                                if (refineFileVal.containsRefineNode(tree)){
+                                    refineFileVal.getRefineNode(tree).setSingleNode(newNode);
+                                    refineFileVal.getRefineNode(tree).setSingleNodeVariables(dict);
+                                }
                                 //innerLoopTask.scorer.scoreThisNode(newNode);
                                 //newNode.computeCoverage();
                                 bestNode = newNode;
                             }
                         }
-                        // ========================================
-                        //
-                        Utils.println("\n% The best node found: " + bestNode);
-                        List<Example> coveredPosExamplesThisCycle = innerLoopTask.collectPosExamplesCovered(bestNode);
-                        List<Example> coveredNegExamplesThisCycle = innerLoopTask.collectNegExamplesCovered(bestNode);
-                        int newlyCoveredPosExamples = 0;
-                        int newlyCoveredNegExamples = 0;
-                        int coveredPosExamplesCount = Utils.getSizeSafely(coveredPosExamplesThisCycle);
-                        int coveredNegExamplesCount = Utils.getSizeSafely(coveredNegExamplesThisCycle);
+                        
+                        if (bestNode == null)
+                        {
+                            if (learningTreeStructuredTheory) { // Need to make the current node a leaf.
+                                //TreeStructuredLearningTask currentTask = outerLoopState.getCurrentTreeLearningTask();
+                                createTreeStructuredLearningTaskLeaf(currentTask);
+                            }    
+                        }else{
+                            // ========================================
+                            //
+                            Utils.println("\n% The best node found: " + bestNode);
+                            List<Example> coveredPosExamplesThisCycle = innerLoopTask.collectPosExamplesCovered(bestNode);
+                            List<Example> coveredNegExamplesThisCycle = innerLoopTask.collectNegExamplesCovered(bestNode);
+                            int newlyCoveredPosExamples = 0;
+                            int newlyCoveredNegExamples = 0;
+                            int coveredPosExamplesCount = Utils.getSizeSafely(coveredPosExamplesThisCycle);
+                            int coveredNegExamplesCount = Utils.getSizeSafely(coveredNegExamplesThisCycle);
 
-                        if (coveredPosExamplesCount > 0) {
-                            for (Example ex : coveredPosExamplesThisCycle) {
-                                // Utils.println("   covered pos: " + ex);
-                                if (!getCoveredPosExamples().contains(ex)) {
-                                    if (!learningTreeStructuredTheory) { // When learning trees we don't need to count coverings by possibly overlapping rules.
-                                        getCoveredPosExamples().add(ex);
-                                        setNumberOfPosExamplesCovered(getNumberOfPosExamplesCovered() + 1); // An awkward way to increment ...
+                            if (coveredPosExamplesCount > 0) {
+                                for (Example ex : coveredPosExamplesThisCycle) {
+                                    // Utils.println("   covered pos: " + ex);
+                                    if (!getCoveredPosExamples().contains(ex)) {
+                                        if (!learningTreeStructuredTheory) { // When learning trees we don't need to count coverings by possibly overlapping rules.
+                                            getCoveredPosExamples().add(ex);
+                                            setNumberOfPosExamplesCovered(getNumberOfPosExamplesCovered() + 1); // An awkward way to increment ...
+                                        }
+                                        newlyCoveredPosExamples++;
                                     }
-                                    newlyCoveredPosExamples++;
                                 }
                             }
-                        }
-                        if (coveredNegExamplesCount > 0) {
-                            for (Example ex : coveredNegExamplesThisCycle) {
-                                // Utils.println(" covered neg: " + ex);
-                                if (!getCoveredNegExamples().contains(ex)) {
-                                    if (!learningTreeStructuredTheory) {  // See comment above.
-                                        getCoveredNegExamples().add(ex);
-                                        setNumberOfNegExamplesCovered(getNumberOfNegExamplesCovered() + 1); // An awkward way to increment ...
+                            if (coveredNegExamplesCount > 0) {
+                                for (Example ex : coveredNegExamplesThisCycle) {
+                                    // Utils.println(" covered neg: " + ex);
+                                    if (!getCoveredNegExamples().contains(ex)) {
+                                        if (!learningTreeStructuredTheory) {  // See comment above.
+                                            getCoveredNegExamples().add(ex);
+                                            setNumberOfNegExamplesCovered(getNumberOfNegExamplesCovered() + 1); // An awkward way to increment ...
+                                        }
+                                        newlyCoveredNegExamples++;
                                     }
-                                    newlyCoveredNegExamples++;
                                 }
                             }
-                        }
 
-                        // The following line of code allowed covered examples to be reweighted on the fly during theory search.
-                        //
-                        // While an interesting idea, there are all sorts of problems the way you implemented it
-                        // (even in the old map-based weight implementation), the biggest being that you never retain
-                        // their original weights, so post-learning scoring would have been wacky.  Covered examples
-                        // would have been down weighted in the final coverage scores...this could happen on both
-                        // negative and positive examples, so it would be hard to say exactly what the effect would
-                        // be, but it wouldn't have been the expected final score.
-                        //
-                        // I am commenting it out for now, but we can re-implement later if desired.
-                        // -Trevor
+                            // The following line of code allowed covered examples to be reweighted on the fly during theory search.
+                            //
+                            // While an interesting idea, there are all sorts of problems the way you implemented it
+                            // (even in the old map-based weight implementation), the biggest being that you never retain
+                            // their original weights, so post-learning scoring would have been wacky.  Covered examples
+                            // would have been down weighted in the final coverage scores...this could happen on both
+                            // negative and positive examples, so it would be hard to say exactly what the effect would
+                            // be, but it wouldn't have been the expected final score.
+                            //
+                            // I am commenting it out for now, but we can re-implement later if desired.
+                            // -Trevor
 
-                        //innerLoopTask.setExampleWeights((Utils.diffDoubles(weightOnCoveredPosExample, 1.0) ? getCoveredPosExamples() : null),
-                        //					              (Utils.diffDoubles(weightOnCoveredNegExample, 1.0) ? getCoveredNegExamples() : null));
+                            //innerLoopTask.setExampleWeights((Utils.diffDoubles(weightOnCoveredPosExample, 1.0) ? getCoveredPosExamples() : null),
+                            //					              (Utils.diffDoubles(weightOnCoveredNegExample, 1.0) ? getCoveredNegExamples() : null));
 
-                        if (coveredPosExamplesCount < 1) {
-                            Utils.warning("Have a bestNode that covers no positive examples.  That shouldn't happen.  Best node = " + bestNode);
-                        }
-                        setNumberOfLearnedClauses(getNumberOfLearnedClauses() + 1);
-                        Clause newClause = new LearnedClause(innerLoopTask, bestNode, getNumberOfCycles(),
-                                                             getNumberOfPosExamplesCovered(), coveredPosExamplesCount, newlyCoveredPosExamples,
-                                                             getNumberOfPosExamples(), getNumberOfNegExamplesCovered(),  coveredNegExamplesCount,
-                                                             newlyCoveredNegExamples, getNumberOfNegExamples());
+                            if (coveredPosExamplesCount < 1) {
+                                Utils.warning("Have a bestNode that covers no positive examples.  That shouldn't happen.  Best node = " + bestNode);
+                            }
+                            setNumberOfLearnedClauses(getNumberOfLearnedClauses() + 1);
+                            Clause newClause = new LearnedClause(innerLoopTask, bestNode, getNumberOfCycles(),
+                                                                 getNumberOfPosExamplesCovered(), coveredPosExamplesCount, newlyCoveredPosExamples,
+                                                                 getNumberOfPosExamples(), getNumberOfNegExamplesCovered(),  coveredNegExamplesCount,
+                                                                 newlyCoveredNegExamples, getNumberOfNegExamples());
 
-                        if (learningTreeStructuredTheory) {
-                            if (!innerLoopTask.constantsAtLeaves) { Utils.error("Have not yet implemented constantsAtLeaves = false."); }
+                            if (learningTreeStructuredTheory) {
+                                if (!innerLoopTask.constantsAtLeaves) { Utils.error("Have not yet implemented constantsAtLeaves = false."); }
 
-                            if (LearnOneClause.debugLevel > 1) {
-                                Utils.println("\n% New full clause: "  + newClause);
-                                Utils.println("\n% New LOCAL clause: " + bestNode.getLocallyAddedClause() + "\n");
+                                if (LearnOneClause.debugLevel > 1) {
+                                    Utils.println("\n% New full clause: "  + newClause);
+                                    Utils.println("\n% New LOCAL clause: " + bestNode.getLocallyAddedClause() + "\n");
+                                }
+
+                                //TreeStructuredLearningTask       currentTask  = outerLoopState.getCurrentTreeLearningTask();
+                                //TreeStructuredTheoryInteriorNode interiorNode = currentTask.getNode();
+                                interiorNode.setSearchNodeThatLearnedTheClause(bestNode); // Be sure to set this before the next call.
+                                interiorNode.setNodeTestFromFullNodeTest(newClause);
+                                // Set the task used to learn this node.
+                                bestNode.setStartingNodeForReset(innerLoopTask.currentStartingNode);
+                                if (LearnOneClause.debugLevel > -1) {
+                                    Utils.println("\n% Expanding node at Level " + interiorNode.getLevel() + " with score = " + Utils.truncate(currentTask.getScore(), 3) + ".\n% Will extend: " + interiorNode.getSearchNodeThatLearnedTheClause());
+                                }
+
+                                boolean atMaxDepth = (interiorNode.getLevel() >= maxTreeDepthInInteriorNodes);
+
+                                TreeStructuredTheoryNode trueBranch;
+                                TreeStructuredTheoryNode falseBranch;
+
+                                // Print tree and node path
+                                Utils.println("% Path: " + Integer.toString(treeNumber) + ";" + getPath(tree));
+
+                                // Force chidren node or leaf in refining
+                                boolean goodEnoughFitTrueBranch;
+                                boolean goodEnoughFitFalseBranch;
+                                goodEnoughFitTrueBranch =  bestNode.acceptableScoreTrueBranch( outerLoopState.maxAcceptableNodeScoreToStop) || atMaxDepth;
+                                goodEnoughFitFalseBranch = bestNode.acceptableScoreFalseBranch(outerLoopState.maxAcceptableNodeScoreToStop) || atMaxDepth;
+                                // atMaxDepth was put at the end to guarantee printing variances after Path.
+
+                                List<Example> trueBranchPosExamples  = null;
+                                List<Example> falseBranchPosExamples = null;
+                                List<Example> trueBranchNegExamples  = null;
+                                List<Example> falseBranchNegExamples = null;
+
+                                double wgtedCountTrueBranchPos  = 0.0;
+                                double wgtedCountTrueBranchNeg  = 0.0;
+                                double wgtedCountFalseBranchPos = 0.0;
+                                double wgtedCountFalseBranchNeg = 0.0;
+
+                                List<Example> posEx = currentTask.getPosExamples();
+                                List<Example> negEx = currentTask.getNegExamples();
+
+                                // Since we are collecting 'extra labels' for leaf nodes, we need always to collect examples.
+                                if (posEx != null) {
+                                    trueBranchPosExamples  = (false && goodEnoughFitTrueBranch  ? null : new ArrayList<Example>(8));
+                                    falseBranchPosExamples = (false && goodEnoughFitFalseBranch ? null : new ArrayList<Example>(8));
+                                    for (Example ex : posEx) {
+                                        if (bestNode.matchesThisExample(ex, true)) {
+                                            if (true || !goodEnoughFitTrueBranch)  { trueBranchPosExamples.add(ex);  }
+                                            wgtedCountTrueBranchPos += ex.getWeightOnExample();
+                                        } else {
+                                            if (true || !goodEnoughFitFalseBranch) { falseBranchPosExamples.add(ex); }
+                                            wgtedCountFalseBranchPos += ex.getWeightOnExample();
+                                        }
+                                    }
+                                }
+                                // Since we are collecting 'extra labels' for leaf nodes, we need always to collect examples.
+                                if (negEx != null) {
+                                    trueBranchNegExamples  = (false && goodEnoughFitTrueBranch  ? null : new ArrayList<Example>(8));
+                                    falseBranchNegExamples = (false && goodEnoughFitFalseBranch ? null : new ArrayList<Example>(8));
+                                    for (Example ex : negEx) {
+                                        if (bestNode.matchesThisExample(ex, false)) {
+                                            if (true || !goodEnoughFitTrueBranch)  { trueBranchNegExamples.add(ex);  }
+                                            wgtedCountTrueBranchNeg += ex.getWeightOnExample();
+                                        } else {
+                                            if (true || !goodEnoughFitFalseBranch) { falseBranchNegExamples.add(ex); }
+                                            wgtedCountFalseBranchNeg += ex.getWeightOnExample();
+                                        }
+                                    }
+                                }
+
+                                if (false && !atMaxDepth) {
+                                    Utils.println("getOverallMinPosWeight() = " + outerLoopState.getOverallMinPosWeight());
+                                    Utils.println("goodEnoughFitTrueBranch  = " + goodEnoughFitTrueBranch);
+                                    Utils.println("goodEnoughFitFalseBranch = " + goodEnoughFitFalseBranch);
+                                    Utils.println("wgtedCountTrueBranchPos  = " + wgtedCountTrueBranchPos);
+                                    Utils.println("wgtedCountTrueBranchNeg  = " + wgtedCountTrueBranchNeg);
+                                    Utils.println("wgtedCountFalseBranchPos = " + wgtedCountFalseBranchPos);
+                                    Utils.println("wgtedCountFalseBranchNeg = " + wgtedCountFalseBranchNeg);
+                                }
+                                /*
+                                            for (Example eg : bestNode.posExamplesThatFailedHere) {
+                                                    Utils.println("Negs: " + ((RegressionRDNExample)eg).toPrettyString());
+                                            }
+                                            for (Example eg : ((LearnOneClause)bestNode.task).getPosExamples()) {
+                                                    Utils.println("Pos: " + ((RegressionRDNExample)eg).toPrettyString());
+                                            }*/
+                                double meanTrue = 0;
+                                double[] meanVecTrue = null;
+
+                                if (learnMLNTheory) {
+                                    meanTrue = bestNode.mlnRegressionForTrue();
+                                } else {
+                                    if (!learnOCCTree) {
+                                            meanTrue = bestNode.meanIfTrue();
+                                    } else {
+                                            meanTrue = 1;
+                                            for (Boolean b : interiorNode.returnBoolPath()) {
+                                                                                    meanTrue = 10*meanTrue + (b?1:0);
+                                                                            }
+                                            meanTrue = 10*meanTrue + 1;
+                                            //meanTrue = 1;
+                                    }
+                                }
+
+                                if (learnMultiValPredicates) {
+                                    meanVecTrue = bestNode.meanVectorIfTrue();
+                                    if (meanVecTrue == null) {
+                                            Utils.error("No mean vector on true branch!!");
+                                    }
+                                }
+                                // We use 2.1 * getMinPosCoverage() here since we assume each branch needs to have getMinPosCoverage() (could get by with 2, but then would need a perfect split).
+                                // Since getLength() includes the head, we see if current length EXCEEDS the maxTreeDepthInLiterals.
+                                // Since 'maxTreeDepthInLiterals' includes bridgers, count them as well.
+                                if (atMaxDepth) { Utils.println("%   Creating a TRUE-branch and FALSE-branch leaves because level = "  + interiorNode.getLevel() + " >= " + maxTreeDepthInInteriorNodes); }
+                                if (atMaxDepth || (forceLeftChildren && (!forceLeftBranch || wgtedCountTrueBranchPos == 0)) || (!forceLeftChildren && (atMaxDepth || goodEnoughFitTrueBranch ||
+                                    newClause.getLength()   >  maxTreeDepthInLiterals || // We use '>' here since we don't count the head literal in depth.
+                                    wgtedCountTrueBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
+                                    wgtedCountTrueBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
+
+
+                                    if (!atMaxDepth && LearnOneClause.debugLevel > -10) {
+                                        if      (newClause.getLength()   >  maxTreeDepthInLiterals)                  { Utils.println("%   Creating a TRUE-branch leaf because length = " + newClause.getLength()   + " > " + maxTreeDepthInLiterals); }
+                                        else if (wgtedCountTrueBranchPos <  2.1 * innerLoopTask.getMinPosCoverage()) { Utils.println("%   Creating a TRUE-branch leaf because wgtedCountTrueBranchPos = "  + Utils.truncate(wgtedCountTrueBranchPos, 1) + " < 2.1 * minPosCov = " + Utils.truncate(2.1 * innerLoopTask.getMinPosCoverage(), 1)); }
+                                        else if (wgtedCountTrueBranchPos <  outerLoopState.getOverallMinPosWeight()) { Utils.println("%   Creating a TRUE-branch leaf because wgtedCountTrueBranchPos = "  + Utils.truncate(wgtedCountTrueBranchPos, 1) + " < minPosWgt = "       + Utils.truncate(outerLoopState.getOverallMinPosWeight(), 1)); }
+                                        else if (goodEnoughFitTrueBranch) 											 { Utils.println("%   Creating a TRUE-branch leaf because good enough fit since score < " +  outerLoopState.maxAcceptableNodeScoreToStop); }
+                                    }
+                                    Term leaf = null; 
+                                    if (learnMultiValPredicates) {
+                                            leaf = createLeafNodeFromCurrentExamples(meanVecTrue);
+                                    } else {
+                                            leaf = createLeafNodeFromCurrentExamples(meanTrue);
+                                    }
+
+                                    trueBranch = new TreeStructuredTheoryLeaf(wgtedCountTrueBranchPos, wgtedCountTrueBranchNeg, bestNode.getVarianceTrueBranch(), leaf, Example.makeLabel(trueBranchPosExamples));
+                                } else {
+                                    // Have another learning task.
+                                    TreeStructuredTheoryInteriorNode newTreeNode = new TreeStructuredTheoryInteriorNode(wgtedCountTrueBranchPos, wgtedCountTrueBranchNeg, null, null, null);
+                                    TreeStructuredLearningTask       newTask     = new TreeStructuredLearningTask(      trueBranchPosExamples,   trueBranchNegExamples, newTreeNode);
+                                    trueBranch = newTreeNode;
+                                    newTreeNode.setParent(interiorNode); // Need a back pointer in case we later make this interior node a leaf.
+                                    newTreeNode.setBoolPath(interiorNode.returnBoolPath()); newTreeNode.addToPath(true);// Set the path taken to this node
+                                    if (learnMultiValPredicates) {
+                                            newTreeNode.setRegressionVectorIfLeaf(meanVecTrue);
+                                    } else {
+                                            newTreeNode.setRegressionValueIfLeaf(meanTrue);
+                                    }
+
+                                    // Since elsewhere we negate the score, do so here as well.
+                                    Utils.println("%   Creating a TRUE-branch interior node with wgtedCountTrueBranchPos = " + Utils.truncate(wgtedCountTrueBranchPos, 1));
+                                    outerLoopState.addToQueueOfTreeStructuredLearningTasks(newTask, newTreeNode, bestNode, -bestNode.getVarianceTrueBranch(sortTreeStructedNodesByMeanScore));
+                                }
+                                double meanFalse = 0;
+                                double[] meanVecFalse = null;
+
+
+                                if (learnMLNTheory) {
+                                    meanFalse = bestNode.mlnRegressionForFalse();
+                                } else {
+                                    if (!learnOCCTree) {
+                                            meanFalse = bestNode.meanIfFalse();
+                                    } else {
+                                            meanFalse = 1;
+                                            for (Boolean b : interiorNode.returnBoolPath()) {
+                                                                                    meanFalse = 10*meanFalse + (b?1:0);
+                                                                            }
+                                            meanFalse = 10*meanFalse + 0;
+                                            //meanFalse = 1;
+                                    }
+                                }
+
+                                if (learnMultiValPredicates) {
+                                    meanVecFalse = bestNode.meanVectorIfFalse();
+                                }
+                                // No need to check max clause length (maxTreeDepthInLiterals) since that should have been checked at parent's call (since no literals added for FALSE branch).
+                                if (atMaxDepth || (forceRightChildren && (!forceRightBranch || wgtedCountFalseBranchPos == 0)) || (!forceRightChildren && (atMaxDepth || goodEnoughFitFalseBranch ||
+                                //	newClause.getLength()   >  maxTreeDepthInLiterals  ||
+                                    wgtedCountFalseBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
+                                    wgtedCountFalseBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
+
+                                    Term leaf = null; 
+                                    if (learnMultiValPredicates) {
+                                            leaf = createLeafNodeFromCurrentExamples(meanVecFalse);
+                                    } else {
+                                            leaf = createLeafNodeFromCurrentExamples(meanFalse);
+                                    }
+
+
+                                    if (!atMaxDepth && LearnOneClause.debugLevel > -10) {
+                                        if      (interiorNode.getLevel() >= maxTreeDepthInInteriorNodes) { Utils.println("%   Creating a FALSE-branch leaf because level = "  + interiorNode.getLevel() + " > " + maxTreeDepthInInteriorNodes); }
+                                        else if (wgtedCountFalseBranchPos <  2.1 * innerLoopTask.getMinPosCoverage()) { Utils.println("%   Creating a FALSE-branch leaf because wgtedCountFalseBranchPos = "  + Utils.truncate(wgtedCountFalseBranchPos, 1) + " < 2.1 * minPosCov = " + Utils.truncate(2.1 * innerLoopTask.getMinPosCoverage(), 1)); }
+                                        else if (wgtedCountFalseBranchPos <  outerLoopState.getOverallMinPosWeight()) { Utils.println("%   Creating a FALSE-branch leaf because wgtedCountFalseBranchPos = "  + Utils.truncate(wgtedCountFalseBranchPos, 1) + " < minPosWgt = "       + Utils.truncate(outerLoopState.getOverallMinPosWeight(), 1)); }
+                                        else if (goodEnoughFitFalseBranch) 									   		  { Utils.println("%   Creating a FALSE-branch leaf because good enough fit since score < " +  outerLoopState.maxAcceptableNodeScoreToStop); }
+                                    }
+
+                                    falseBranch = new TreeStructuredTheoryLeaf(wgtedCountFalseBranchPos, wgtedCountFalseBranchNeg, bestNode.getVarianceFalseBranch(), leaf, Example.makeLabel(falseBranchPosExamples));
+                                } else {
+                                    // Have another learning task.
+                                    TreeStructuredTheoryInteriorNode newTreeNode = new TreeStructuredTheoryInteriorNode(wgtedCountFalseBranchPos, wgtedCountFalseBranchNeg, null, null, null);
+                                    TreeStructuredLearningTask       newTask     = new TreeStructuredLearningTask(      falseBranchPosExamples,   falseBranchNegExamples, newTreeNode);
+                                    // On the FALSE branch, we need to use the PARENT's node (since the latest node failed).  There should always be a parent, but play it safe here.
+                                    // NOTE: we need to get the parent in the TREE and not in the LearnOneClause search.  I.e., bestNode might have more than 1 literal!  So can't do bestNode.getParentNode().
+                                    // Also, need to get the TIME A TRUE BRANCH WAS TAKEN.
+                                    TreeStructuredTheoryInteriorNode parentOfCurrentNode = interiorNode.getLastParentOnTrueBranch(interiorNode);
+                                    SingleClauseNode parentSearchNode = (parentOfCurrentNode == null ? null : parentOfCurrentNode.getSearchNodeThatLearnedTheClause());
+                                    falseBranch = newTreeNode;
+                                    newTreeNode.setParent(interiorNode); // Need a back pointer in case we later make this interior node a leaf.
+                                    newTreeNode.setBoolPath(interiorNode.returnBoolPath()); newTreeNode.addToPath(false);// Set the path taken to this node
+
+                                    if (learnMultiValPredicates) {
+                                            newTreeNode.setRegressionVectorIfLeaf(meanVecFalse);
+                                    } else {
+                                            newTreeNode.setRegressionValueIfLeaf(meanFalse);
+                                    }
+                                    // Since elsewhere we negate the score, do so here as well.
+                                    Utils.println("%   Creating a FALSE-branch interior node with wgtedCountFalseBranchPos = " + Utils.truncate(wgtedCountFalseBranchPos, 1));
+                              //      Utils.println("Creating " + interiorNode.getFullNodeTest() + " with trueBranchParent: " + 
+                              //      		(parentOfCurrentNode == null ? "null" :parentOfCurrentNode.getFullNodeTest()));
+                                    outerLoopState.addToQueueOfTreeStructuredLearningTasks(newTask, newTreeNode, parentSearchNode, -bestNode.getVarianceFalseBranch(sortTreeStructedNodesByMeanScore)); // We want to sort by TOTAL error, not AVERAGE.
+                                }
+                                //Utils.waitHere();
+                                interiorNode.setTreeForTrue( trueBranch);
+                                interiorNode.setTreeForFalse(falseBranch);
+                            }
+                            else {
+                                getStdILPtheory().addMainClause(newClause, innerLoopTask.getInlineManager()); // The inline manager probably has already been sent, but send it again anyway.
+                                if (learnMLNTheory && !learningTreeStructuredTheory) {
+                                    double reg = bestNode.mlnRegressionForTrue();
+                                    Utils.println("Setting " + reg + " for " + newClause);
+                                    int len = getStdILPtheory().getClauses().size();
+                                    getStdILPtheory().getClauses().get(len-1).setWeightOnSentence(reg);
+                                    // Update gradients
+                                    for (Example eg : coveredPosExamplesThisCycle) {
+                                                                            ((RegressionRDNExample)eg).setOutputValue(((RegressionRDNExample)eg)
+                                                                                            .getOutputValue() - reg); 
+                                                                    }
+                                }
                             }
 
-                            //TreeStructuredLearningTask       currentTask  = outerLoopState.getCurrentTreeLearningTask();
-                            //TreeStructuredTheoryInteriorNode interiorNode = currentTask.getNode();
-                            interiorNode.setSearchNodeThatLearnedTheClause(bestNode); // Be sure to set this before the next call.
-                            interiorNode.setNodeTestFromFullNodeTest(newClause);
-                            // Set the task used to learn this node.
-                            bestNode.setStartingNodeForReset(innerLoopTask.currentStartingNode);
+                            long end = System.currentTimeMillis();
+                            if (LearnOneClause.debugLevel > -1 && learningTreeStructuredTheory) {
+                                Utils.println("\n% Time for loop #" + getNumberOfCycles() + ": " + Utils.convertMillisecondsToTimeSpan(end - start, 3) + ".");
+                                Utils.println(  "% Internal node max length = " + getMaxNumberOfLiteralsAtAnInteriorNode());
+                                Utils.println(  "% Max tree depth in lits   = " + getMaxTreeDepthInLiterals());
+                                Utils.println(  "% Max tree depth in nodes  = " + getMaxTreeDepth());
+                                Utils.println(  "% Max number of clauses    = " + maxNumberOfClauses);
+                            }
+
                             if (LearnOneClause.debugLevel > -1) {
-                                Utils.println("\n% Expanding node at Level " + interiorNode.getLevel() + " with score = " + Utils.truncate(currentTask.getScore(), 3) + ".\n% Will extend: " + interiorNode.getSearchNodeThatLearnedTheClause());
-                            }
-
-                            boolean atMaxDepth = (interiorNode.getLevel() >= maxTreeDepthInInteriorNodes);
-                            
-                            TreeStructuredTheoryNode trueBranch;
-                            TreeStructuredTheoryNode falseBranch;
-                            
-                            // Print tree and node path
-                            Utils.println("% Path: " + Integer.toString(treeNumber) + ";" + getPath(tree));
-                            
-                            // Force chidren node or leaf in refining
-                            boolean goodEnoughFitTrueBranch;
-                            boolean goodEnoughFitFalseBranch;
-                            goodEnoughFitTrueBranch =  bestNode.acceptableScoreTrueBranch( outerLoopState.maxAcceptableNodeScoreToStop) || atMaxDepth;
-                            goodEnoughFitFalseBranch = bestNode.acceptableScoreFalseBranch(outerLoopState.maxAcceptableNodeScoreToStop) || atMaxDepth;
-                            // atMaxDepth was put at the end to guarantee printing variances after Path.
-                            
-                            List<Example> trueBranchPosExamples  = null;
-                            List<Example> falseBranchPosExamples = null;
-                            List<Example> trueBranchNegExamples  = null;
-                            List<Example> falseBranchNegExamples = null;
-
-                            double wgtedCountTrueBranchPos  = 0.0;
-                            double wgtedCountTrueBranchNeg  = 0.0;
-                            double wgtedCountFalseBranchPos = 0.0;
-                            double wgtedCountFalseBranchNeg = 0.0;
-
-                            List<Example> posEx = currentTask.getPosExamples();
-                            List<Example> negEx = currentTask.getNegExamples();
-
-                            // Since we are collecting 'extra labels' for leaf nodes, we need always to collect examples.
-                            if (posEx != null) {
-                                trueBranchPosExamples  = (false && goodEnoughFitTrueBranch  ? null : new ArrayList<Example>(8));
-                                falseBranchPosExamples = (false && goodEnoughFitFalseBranch ? null : new ArrayList<Example>(8));
-                                for (Example ex : posEx) {
-                                    if (bestNode.matchesThisExample(ex, true)) {
-                                        if (true || !goodEnoughFitTrueBranch)  { trueBranchPosExamples.add(ex);  }
-                                        wgtedCountTrueBranchPos += ex.getWeightOnExample();
-                                    } else {
-                                        if (true || !goodEnoughFitFalseBranch) { falseBranchPosExamples.add(ex); }
-                                        wgtedCountFalseBranchPos += ex.getWeightOnExample();
-                                    }
+                                setFractionOfPosCovered((double) getNumberOfPosExamplesCovered() / (double) getNumberOfPosExamples());
+                                setFractionOfNegCovered((double) getNumberOfNegExamplesCovered() / (double) getNumberOfNegExamples());
+                                Utils.println("\n% On cycle #" + getNumberOfCycles()+ ", the best clause found is:");
+                                Utils.println("%      " + bestNode);
+                                Utils.println("% This clause covers " + coveredPosExamplesCount + " " + (isFlipFlopPosAndNegExamples() ? "flipped " : "") + "positive examples, of which " + newlyCoveredPosExamples + " are newly covered.");
+                                Utils.println("% It also covers "	  + coveredNegExamplesCount + " " + (isFlipFlopPosAndNegExamples() ? "flipped " : "") + "negative examples, of which " + newlyCoveredNegExamples + " are newly covered.");
+                                if (learningTreeStructuredTheory == false) {
+                                    Utils.println("% The current set of " + Utils.getSizeSafely(getStdILPtheory().getClauses()) + " best clauses covers "
+                                                  + Utils.truncate(100 * getFractionOfPosCovered(), 1) + "% of the positive examples and "
+                                                  + Utils.truncate(100 * getFractionOfNegCovered(), 1) + "% of the negatives." + "}");
                                 }
-                            }
-                            // Since we are collecting 'extra labels' for leaf nodes, we need always to collect examples.
-                            if (negEx != null) {
-                                trueBranchNegExamples  = (false && goodEnoughFitTrueBranch  ? null : new ArrayList<Example>(8));
-                                falseBranchNegExamples = (false && goodEnoughFitFalseBranch ? null : new ArrayList<Example>(8));
-                                for (Example ex : negEx) {
-                                    if (bestNode.matchesThisExample(ex, false)) {
-                                        if (true || !goodEnoughFitTrueBranch)  { trueBranchNegExamples.add(ex);  }
-                                        wgtedCountTrueBranchNeg += ex.getWeightOnExample();
-                                    } else {
-                                        if (true || !goodEnoughFitFalseBranch) { falseBranchNegExamples.add(ex); }
-                                        wgtedCountFalseBranchNeg += ex.getWeightOnExample();
-                                    }
-                                }
-                            }
-
-                            if (false && !atMaxDepth) {
-                                Utils.println("getOverallMinPosWeight() = " + outerLoopState.getOverallMinPosWeight());
-                                Utils.println("goodEnoughFitTrueBranch  = " + goodEnoughFitTrueBranch);
-                                Utils.println("goodEnoughFitFalseBranch = " + goodEnoughFitFalseBranch);
-                                Utils.println("wgtedCountTrueBranchPos  = " + wgtedCountTrueBranchPos);
-                                Utils.println("wgtedCountTrueBranchNeg  = " + wgtedCountTrueBranchNeg);
-                                Utils.println("wgtedCountFalseBranchPos = " + wgtedCountFalseBranchPos);
-                                Utils.println("wgtedCountFalseBranchNeg = " + wgtedCountFalseBranchNeg);
-                            }
-                            /*
-            				for (Example eg : bestNode.posExamplesThatFailedHere) {
-            					Utils.println("Negs: " + ((RegressionRDNExample)eg).toPrettyString());
-            				}
-            				for (Example eg : ((LearnOneClause)bestNode.task).getPosExamples()) {
-            					Utils.println("Pos: " + ((RegressionRDNExample)eg).toPrettyString());
-            				}*/
-                            double meanTrue = 0;
-                            double[] meanVecTrue = null;
-                            
-                            if (learnMLNTheory) {
-                            	meanTrue = bestNode.mlnRegressionForTrue();
-                            } else {
-                            	if (!learnOCCTree) {
-                            		meanTrue = bestNode.meanIfTrue();
-                            	} else {
-                            		meanTrue = 1;
-                            		for (Boolean b : interiorNode.returnBoolPath()) {
-										meanTrue = 10*meanTrue + (b?1:0);
-									}
-                            		meanTrue = 10*meanTrue + 1;
-                            		//meanTrue = 1;
-                            	}
-                            }
-                            
-                            if (learnMultiValPredicates) {
-                            	meanVecTrue = bestNode.meanVectorIfTrue();
-                            	if (meanVecTrue == null) {
-                            		Utils.error("No mean vector on true branch!!");
-                            	}
-                            }
-                            // We use 2.1 * getMinPosCoverage() here since we assume each branch needs to have getMinPosCoverage() (could get by with 2, but then would need a perfect split).
-                            // Since getLength() includes the head, we see if current length EXCEEDS the maxTreeDepthInLiterals.
-                            // Since 'maxTreeDepthInLiterals' includes bridgers, count them as well.
-                            if (atMaxDepth) { Utils.println("%   Creating a TRUE-branch and FALSE-branch leaves because level = "  + interiorNode.getLevel() + " >= " + maxTreeDepthInInteriorNodes); }
-                            if (atMaxDepth || (forceLeftChildren && (!forceLeftBranch || wgtedCountTrueBranchPos == 0)) || (!forceLeftChildren && (atMaxDepth || goodEnoughFitTrueBranch ||
-                                newClause.getLength()   >  maxTreeDepthInLiterals || // We use '>' here since we don't count the head literal in depth.
-                                wgtedCountTrueBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
-                                wgtedCountTrueBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
-                                
-
-                                if (!atMaxDepth && LearnOneClause.debugLevel > -10) {
-                                    if      (newClause.getLength()   >  maxTreeDepthInLiterals)                  { Utils.println("%   Creating a TRUE-branch leaf because length = " + newClause.getLength()   + " > " + maxTreeDepthInLiterals); }
-                                    else if (wgtedCountTrueBranchPos <  2.1 * innerLoopTask.getMinPosCoverage()) { Utils.println("%   Creating a TRUE-branch leaf because wgtedCountTrueBranchPos = "  + Utils.truncate(wgtedCountTrueBranchPos, 1) + " < 2.1 * minPosCov = " + Utils.truncate(2.1 * innerLoopTask.getMinPosCoverage(), 1)); }
-                                    else if (wgtedCountTrueBranchPos <  outerLoopState.getOverallMinPosWeight()) { Utils.println("%   Creating a TRUE-branch leaf because wgtedCountTrueBranchPos = "  + Utils.truncate(wgtedCountTrueBranchPos, 1) + " < minPosWgt = "       + Utils.truncate(outerLoopState.getOverallMinPosWeight(), 1)); }
-                                    else if (goodEnoughFitTrueBranch) 											 { Utils.println("%   Creating a TRUE-branch leaf because good enough fit since score < " +  outerLoopState.maxAcceptableNodeScoreToStop); }
-                                }
-                                Term leaf = null; 
-                                if (learnMultiValPredicates) {
-                                	leaf = createLeafNodeFromCurrentExamples(meanVecTrue);
-                                } else {
-                                	leaf = createLeafNodeFromCurrentExamples(meanTrue);
-                                }
-                                
-                                trueBranch = new TreeStructuredTheoryLeaf(wgtedCountTrueBranchPos, wgtedCountTrueBranchNeg, bestNode.getVarianceTrueBranch(), leaf, Example.makeLabel(trueBranchPosExamples));
-                            } else {
-                                // Have another learning task.
-                                TreeStructuredTheoryInteriorNode newTreeNode = new TreeStructuredTheoryInteriorNode(wgtedCountTrueBranchPos, wgtedCountTrueBranchNeg, null, null, null);
-                                TreeStructuredLearningTask       newTask     = new TreeStructuredLearningTask(      trueBranchPosExamples,   trueBranchNegExamples, newTreeNode);
-                                trueBranch = newTreeNode;
-                                newTreeNode.setParent(interiorNode); // Need a back pointer in case we later make this interior node a leaf.
-                                newTreeNode.setBoolPath(interiorNode.returnBoolPath()); newTreeNode.addToPath(true);// Set the path taken to this node
-                                if (learnMultiValPredicates) {
-                                	newTreeNode.setRegressionVectorIfLeaf(meanVecTrue);
-                                } else {
-                                	newTreeNode.setRegressionValueIfLeaf(meanTrue);
-                                }
-                                
-                                // Since elsewhere we negate the score, do so here as well.
-                                Utils.println("%   Creating a TRUE-branch interior node with wgtedCountTrueBranchPos = " + Utils.truncate(wgtedCountTrueBranchPos, 1));
-                                outerLoopState.addToQueueOfTreeStructuredLearningTasks(newTask, newTreeNode, bestNode, -bestNode.getVarianceTrueBranch(sortTreeStructedNodesByMeanScore));
-                            }
-                            double meanFalse = 0;
-                            double[] meanVecFalse = null;
-                            
-                            
-                            if (learnMLNTheory) {
-                            	meanFalse = bestNode.mlnRegressionForFalse();
-                            } else {
-                            	if (!learnOCCTree) {
-                            		meanFalse = bestNode.meanIfFalse();
-                            	} else {
-                            		meanFalse = 1;
-                            		for (Boolean b : interiorNode.returnBoolPath()) {
-										meanFalse = 10*meanFalse + (b?1:0);
-									}
-                            		meanFalse = 10*meanFalse + 0;
-                            		//meanFalse = 1;
-                            	}
-                            }
-                            
-                            if (learnMultiValPredicates) {
-                            	meanVecFalse = bestNode.meanVectorIfFalse();
-                            }
-                            // No need to check max clause length (maxTreeDepthInLiterals) since that should have been checked at parent's call (since no literals added for FALSE branch).
-                            if (atMaxDepth || (forceRightChildren && (!forceRightBranch || wgtedCountFalseBranchPos == 0)) || (!forceRightChildren && (atMaxDepth || goodEnoughFitFalseBranch ||
-                            //	newClause.getLength()   >  maxTreeDepthInLiterals  ||
-                                wgtedCountFalseBranchPos <  2.1 * innerLoopTask.getMinPosCoverage() ||
-                                wgtedCountFalseBranchPos <  outerLoopState.getOverallMinPosWeight()))) {
-          
-                                Term leaf = null; 
-                                if (learnMultiValPredicates) {
-                                	leaf = createLeafNodeFromCurrentExamples(meanVecFalse);
-                                } else {
-                                	leaf = createLeafNodeFromCurrentExamples(meanFalse);
-                                }
-                                
-
-                                if (!atMaxDepth && LearnOneClause.debugLevel > -10) {
-                                    if      (interiorNode.getLevel() >= maxTreeDepthInInteriorNodes) { Utils.println("%   Creating a FALSE-branch leaf because level = "  + interiorNode.getLevel() + " > " + maxTreeDepthInInteriorNodes); }
-                                    else if (wgtedCountFalseBranchPos <  2.1 * innerLoopTask.getMinPosCoverage()) { Utils.println("%   Creating a FALSE-branch leaf because wgtedCountFalseBranchPos = "  + Utils.truncate(wgtedCountFalseBranchPos, 1) + " < 2.1 * minPosCov = " + Utils.truncate(2.1 * innerLoopTask.getMinPosCoverage(), 1)); }
-                                    else if (wgtedCountFalseBranchPos <  outerLoopState.getOverallMinPosWeight()) { Utils.println("%   Creating a FALSE-branch leaf because wgtedCountFalseBranchPos = "  + Utils.truncate(wgtedCountFalseBranchPos, 1) + " < minPosWgt = "       + Utils.truncate(outerLoopState.getOverallMinPosWeight(), 1)); }
-                                    else if (goodEnoughFitFalseBranch) 									   		  { Utils.println("%   Creating a FALSE-branch leaf because good enough fit since score < " +  outerLoopState.maxAcceptableNodeScoreToStop); }
-                                }
-
-                                falseBranch = new TreeStructuredTheoryLeaf(wgtedCountFalseBranchPos, wgtedCountFalseBranchNeg, bestNode.getVarianceFalseBranch(), leaf, Example.makeLabel(falseBranchPosExamples));
-                            } else {
-                                // Have another learning task.
-                                TreeStructuredTheoryInteriorNode newTreeNode = new TreeStructuredTheoryInteriorNode(wgtedCountFalseBranchPos, wgtedCountFalseBranchNeg, null, null, null);
-                                TreeStructuredLearningTask       newTask     = new TreeStructuredLearningTask(      falseBranchPosExamples,   falseBranchNegExamples, newTreeNode);
-                                // On the FALSE branch, we need to use the PARENT's node (since the latest node failed).  There should always be a parent, but play it safe here.
-                                // NOTE: we need to get the parent in the TREE and not in the LearnOneClause search.  I.e., bestNode might have more than 1 literal!  So can't do bestNode.getParentNode().
-                                // Also, need to get the TIME A TRUE BRANCH WAS TAKEN.
-                                TreeStructuredTheoryInteriorNode parentOfCurrentNode = interiorNode.getLastParentOnTrueBranch(interiorNode);
-                                SingleClauseNode parentSearchNode = (parentOfCurrentNode == null ? null : parentOfCurrentNode.getSearchNodeThatLearnedTheClause());
-                                falseBranch = newTreeNode;
-                                newTreeNode.setParent(interiorNode); // Need a back pointer in case we later make this interior node a leaf.
-                                newTreeNode.setBoolPath(interiorNode.returnBoolPath()); newTreeNode.addToPath(false);// Set the path taken to this node
-
-                                if (learnMultiValPredicates) {
-                                	newTreeNode.setRegressionVectorIfLeaf(meanVecFalse);
-                                } else {
-                                	newTreeNode.setRegressionValueIfLeaf(meanFalse);
-                                }
-                                // Since elsewhere we negate the score, do so here as well.
-                                Utils.println("%   Creating a FALSE-branch interior node with wgtedCountFalseBranchPos = " + Utils.truncate(wgtedCountFalseBranchPos, 1));
-                          //      Utils.println("Creating " + interiorNode.getFullNodeTest() + " with trueBranchParent: " + 
-                          //      		(parentOfCurrentNode == null ? "null" :parentOfCurrentNode.getFullNodeTest()));
-                                outerLoopState.addToQueueOfTreeStructuredLearningTasks(newTask, newTreeNode, parentSearchNode, -bestNode.getVarianceFalseBranch(sortTreeStructedNodesByMeanScore)); // We want to sort by TOTAL error, not AVERAGE.
-                            }
-                            //Utils.waitHere();
-                            interiorNode.setTreeForTrue( trueBranch);
-                            interiorNode.setTreeForFalse(falseBranch);
-                        }
-                        else {
-                            getStdILPtheory().addMainClause(newClause, innerLoopTask.getInlineManager()); // The inline manager probably has already been sent, but send it again anyway.
-                            if (learnMLNTheory && !learningTreeStructuredTheory) {
-                            	double reg = bestNode.mlnRegressionForTrue();
-                            	Utils.println("Setting " + reg + " for " + newClause);
-                            	int len = getStdILPtheory().getClauses().size();
-                            	getStdILPtheory().getClauses().get(len-1).setWeightOnSentence(reg);
-                            	// Update gradients
-                            	for (Example eg : coveredPosExamplesThisCycle) {
-									((RegressionRDNExample)eg).setOutputValue(((RegressionRDNExample)eg)
-											.getOutputValue() - reg); 
-								}
-                            }
-                        }
-
-                        long end = System.currentTimeMillis();
-                        if (LearnOneClause.debugLevel > -1 && learningTreeStructuredTheory) {
-                            Utils.println("\n% Time for loop #" + getNumberOfCycles() + ": " + Utils.convertMillisecondsToTimeSpan(end - start, 3) + ".");
-                            Utils.println(  "% Internal node max length = " + getMaxNumberOfLiteralsAtAnInteriorNode());
-                            Utils.println(  "% Max tree depth in lits   = " + getMaxTreeDepthInLiterals());
-                            Utils.println(  "% Max tree depth in nodes  = " + getMaxTreeDepth());
-                            Utils.println(  "% Max number of clauses    = " + maxNumberOfClauses);
-                        }
-
-                        if (LearnOneClause.debugLevel > -1) {
-                            setFractionOfPosCovered((double) getNumberOfPosExamplesCovered() / (double) getNumberOfPosExamples());
-                            setFractionOfNegCovered((double) getNumberOfNegExamplesCovered() / (double) getNumberOfNegExamples());
-                            Utils.println("\n% On cycle #" + getNumberOfCycles()+ ", the best clause found is:");
-                            Utils.println("%      " + bestNode);
-                            Utils.println("% This clause covers " + coveredPosExamplesCount + " " + (isFlipFlopPosAndNegExamples() ? "flipped " : "") + "positive examples, of which " + newlyCoveredPosExamples + " are newly covered.");
-                            Utils.println("% It also covers "	  + coveredNegExamplesCount + " " + (isFlipFlopPosAndNegExamples() ? "flipped " : "") + "negative examples, of which " + newlyCoveredNegExamples + " are newly covered.");
-                            if (learningTreeStructuredTheory == false) {
-                                Utils.println("% The current set of " + Utils.getSizeSafely(getStdILPtheory().getClauses()) + " best clauses covers "
-                                              + Utils.truncate(100 * getFractionOfPosCovered(), 1) + "% of the positive examples and "
-                                              + Utils.truncate(100 * getFractionOfNegCovered(), 1) + "% of the negatives." + "}");
                             }
                         }
                     } else {

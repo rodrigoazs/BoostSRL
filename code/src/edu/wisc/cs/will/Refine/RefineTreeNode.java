@@ -15,13 +15,13 @@ import java.util.HashMap;
  */
 public class RefineTreeNode {
         private RefineNode node;
-        private RefineTreeNode leftBranch;
-        private RefineTreeNode rightBranch;
+        private RefineTreeNode leftNode;
+        private RefineTreeNode rightNode;
         
         public RefineTreeNode() {
             this.node = null;
-            this.leftBranch = null;
-            this.rightBranch = null;
+            this.leftNode = null;
+            this.rightNode = null;
         }
         
         public RefineNode getNode() {
@@ -32,19 +32,19 @@ public class RefineTreeNode {
             this.node = node;
         }
         
-        public RefineTreeNode getLeftBranch() {
-            return leftBranch;
+        public RefineTreeNode getLeftNode() {
+            return leftNode;
         }
         
-        public void setLeftBranch(RefineTreeNode node) {
-            leftBranch = node;
+        public void setLeftNode(RefineTreeNode node) {
+            leftNode = node;
         }
         
-        public RefineTreeNode getRightBranch() {
-            return rightBranch;
+        public RefineTreeNode getRightNode() {
+            return rightNode;
         }
         
-        public void setRightBranch(RefineTreeNode node) {
-            rightBranch = node;
+        public void setRightNode(RefineTreeNode node) {
+            rightNode = node;
         }
 }

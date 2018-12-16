@@ -317,34 +317,40 @@ public class Transfer {
         }
         
         public void promoteNode(RefineTreeNode node) {
-            if (node.getLeftBranch() == null)
+            if (node.getLeftNode() == null)
             {
-                RefineTreeNode right = node.getRightBranch();
-                node.getNode().setNode(right.getNode().getNode());
-                node.getNode().setLeftBranch(right.getNode().getLeftBranch());
-                node.getNode().setRightBranch(right.getNode().getRightBranch());
-                node.setLeftBranch(right.getLeftBranch());
-                node.setRightBranch(right.getRightBranch());
+                RefineTreeNode right = node.getRightNode();
+                if (right == null){
+                    node.setNode(null);
+                }else{
+                    node.getNode().setNode(right.getNode().getNode());
+                    node.getNode().setLeftBranch(right.getNode().getLeftBranch());
+                    node.getNode().setRightBranch(right.getNode().getRightBranch());
+                    node.setLeftNode(right.getLeftNode());
+                    node.setRightNode(right.getRightNode());
+                }
             }else{
-                RefineTreeNode right = node.getRightBranch();
-                RefineTreeNode left = node.getLeftBranch();
+                RefineTreeNode right = node.getRightNode();
+                RefineTreeNode left = node.getLeftNode();
                 node.getNode().setNode(left.getNode().getNode());
                 node.getNode().setLeftBranch(left.getNode().getLeftBranch());
                 node.getNode().setRightBranch(left.getNode().getRightBranch());
-                node.setLeftBranch(left.getLeftBranch());
-                node.setRightBranch(left.getRightBranch());
-                sendNodeToFalse(node, right);
+                node.setLeftNode(left.getLeftNode());
+                node.setRightNode(left.getRightNode());
+                if (right != null) {
+                    sendNodeToFalse(node, right);
+                }
             }
         }
         
         private void sendNodeToFalse(RefineTreeNode node, RefineTreeNode send)
         {
             RefineTreeNode current = node;
-            while (current.getRightBranch() != null)
+            while (current.getRightNode() != null)
             {
-                current = current.getRightBranch();
+                current = current.getRightNode();
             }
-            current.setRightBranch(send);
+            current.setRightNode(send);
             current.getNode().setRightBranch(true);
         }
         
