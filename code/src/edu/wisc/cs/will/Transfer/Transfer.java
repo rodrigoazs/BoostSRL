@@ -16,10 +16,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.paukov.combinatorics.CombinatoricsVector;
-import org.paukov.combinatorics.Factory;
-import org.paukov.combinatorics.Generator;
-import org.paukov.combinatorics.ICombinatoricsVector;
+//import org.paukov.combinatorics.Factory;
+//import org.paukov.combinatorics.Generator;
+//import org.paukov.combinatorics.ICombinatoricsVector;
 
 /**
  *
@@ -234,11 +233,12 @@ public class Transfer {
                         ArrayList<ArrayList<String>> permutations = new ArrayList<ArrayList<String>>();
                     
                         if (searchArgPermutation) {
-                            ICombinatoricsVector<String> vector = Factory.createVector(generateVariables(target.get(tarPred).size()));
+                            /*ICombinatoricsVector<String> vector = Factory.createVector(generateVariables(target.get(tarPred).size()));
                             Generator<String> gen = Factory.createPermutationGenerator(vector);
                             for (ICombinatoricsVector<String> perm : gen) {
                                 permutations.add(new ArrayList<String>(perm.getVector()));
-                            }
+                            }*/
+                            permutations = permutations(generateVariables(target.get(tarPred).size()));
                         }else{
                             permutations.add(generateVariables(target.get(tarPred).size()));
                         }
@@ -379,4 +379,38 @@ public class Transfer {
             }
             return ret;
 	}
+        
+        private ArrayList<ArrayList<String>> permutations(ArrayList<String> vector){
+            return permute(vector.toArray(new String[vector.size()]), 0, vector.size()-1);
+        } 
+        
+        private ArrayList<ArrayList<String>> permute(String[] str, int l, int r) 
+        { 
+            if (l == r){
+                ArrayList<ArrayList<String>> temp = new ArrayList<ArrayList<String>>();
+                temp.add(new ArrayList<String>(Arrays.asList(str)));
+                return temp;
+            }else
+            { 
+                ArrayList<ArrayList<String>>  temp = new ArrayList<ArrayList<String>>();
+                for (int i = l; i <= r; i++) 
+                { 
+                    str = swap(str,l,i); 
+                    ArrayList<ArrayList<String>> t = permute(str, l+1, r);
+                    temp.addAll(t);
+                    str = swap(str,l,i);
+                }
+                return temp;
+            } 
+        }
+        
+        public static String[] swap(String[] a, int i, int j) 
+        { 
+            String temp; 
+            //char[] charArray = a.toCharArray(); 
+            temp = a[i] ; 
+            a[i] = a[j]; 
+            a[j] = temp; 
+            return a; 
+        }
 }

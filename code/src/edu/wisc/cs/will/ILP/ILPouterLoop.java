@@ -959,8 +959,9 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                             // Force chidren node or leaf in refining
                             boolean goodEnoughFitTrueBranch;
                             boolean goodEnoughFitFalseBranch;
-                            goodEnoughFitTrueBranch = atMaxDepth || bestNode.acceptableScoreTrueBranch( outerLoopState.maxAcceptableNodeScoreToStop);
-                            goodEnoughFitFalseBranch = atMaxDepth || bestNode.acceptableScoreFalseBranch(outerLoopState.maxAcceptableNodeScoreToStop);
+                            goodEnoughFitTrueBranch =  bestNode.acceptableScoreTrueBranch( outerLoopState.maxAcceptableNodeScoreToStop) || atMaxDepth;
+                            goodEnoughFitFalseBranch = bestNode.acceptableScoreFalseBranch(outerLoopState.maxAcceptableNodeScoreToStop) || atMaxDepth;
+                            // atMaxDepth was put at the end to guarantee printing variances after Path.
                             
                             List<Example> trueBranchPosExamples  = null;
                             List<Example> falseBranchPosExamples = null;

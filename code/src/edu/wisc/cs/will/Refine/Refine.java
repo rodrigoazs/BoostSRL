@@ -127,15 +127,15 @@ public class Refine {
         }*/
         
         public boolean containsRefineNode(boolean[] tree) {
-            ArrayList<String> str = new ArrayList<String>();
-            for (boolean bool : tree) {
-                str.add(String.valueOf(bool));
-            }
-            if (str.isEmpty())
+            if (tree.length == 0)
             {
                 return refines2.containsKey(Integer.toString(this.Tree)) && refines2.get(Integer.toString(this.Tree)).getNode() != null;
             }
             RefineTreeNode current = refines2.get(Integer.toString(this.Tree));
+            if (current == null)
+            {
+                return false;
+            }
             for (boolean p : tree) {
                 if (p) {
                     if (current.getLeftBranch() == null) {
