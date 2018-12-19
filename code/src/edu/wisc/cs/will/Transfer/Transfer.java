@@ -8,7 +8,6 @@ package edu.wisc.cs.will.Transfer;
 import edu.wisc.cs.will.FOPC.Term;
 import edu.wisc.cs.will.ILP.SingleClauseNode;
 import edu.wisc.cs.will.Refine.RefineNode;
-import edu.wisc.cs.will.Refine.RefineTreeNode;
 import edu.wisc.cs.will.Utils.Utils;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -316,25 +315,25 @@ public class Transfer {
             }
         }
         
-        public void promoteNode(RefineTreeNode node) {
+        public void promoteNode(RefineNode node) {
             if (node.getLeftNode() == null)
             {
-                RefineTreeNode right = node.getRightNode();
+                RefineNode right = node.getRightNode();
                 if (right == null){
                     node.setNode(null);
                 }else{
-                    node.getNode().setNode(right.getNode().getNode());
-                    node.getNode().setLeftBranch(right.getNode().getLeftBranch());
-                    node.getNode().setRightBranch(right.getNode().getRightBranch());
+                    node.setNode(right.getNode());
+                    node.setLeftBranch(right.getLeftBranch());
+                    node.setRightBranch(right.getRightBranch());
                     node.setLeftNode(right.getLeftNode());
                     node.setRightNode(right.getRightNode());
                 }
             }else{
-                RefineTreeNode right = node.getRightNode();
-                RefineTreeNode left = node.getLeftNode();
-                node.getNode().setNode(left.getNode().getNode());
-                node.getNode().setLeftBranch(left.getNode().getLeftBranch());
-                node.getNode().setRightBranch(left.getNode().getRightBranch());
+                RefineNode right = node.getRightNode();
+                RefineNode left = node.getLeftNode();
+                node.setNode(left.getNode());
+                node.setLeftBranch(left.getLeftBranch());
+                node.setRightBranch(left.getRightBranch());
                 node.setLeftNode(left.getLeftNode());
                 node.setRightNode(left.getRightNode());
                 if (right != null) {
@@ -343,15 +342,15 @@ public class Transfer {
             }
         }
         
-        private void sendNodeToFalse(RefineTreeNode node, RefineTreeNode send)
+        private void sendNodeToFalse(RefineNode node, RefineNode send)
         {
-            RefineTreeNode current = node;
+            RefineNode current = node;
             while (current.getRightNode() != null)
             {
                 current = current.getRightNode();
             }
             current.setRightNode(send);
-            current.getNode().setRightBranch(true);
+            current.setRightBranch(true);
         }
         
         private HashMap<String, String> cloneTypeConstraints(HashMap<String, String> t) {

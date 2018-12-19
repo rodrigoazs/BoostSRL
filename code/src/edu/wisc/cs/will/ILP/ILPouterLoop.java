@@ -820,7 +820,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                                             if (body.size() == 0)
                                             {
                                                 // node transferred to empty
-                                                transferFileVal.promoteNode(refineFileVal.getRefineTreeNode(tree));
+                                                transferFileVal.promoteNode(refineFileVal.getRefineNode(tree));
                                                 if (refineFileVal.containsRefineNode(tree)){
                                                     // update force booleans
                                                     forceLeftBranch = refineFileVal.getRefineNode(tree).getLeftBranch();
@@ -860,7 +860,7 @@ public class ILPouterLoop implements GleanerFileNameProvider {
                                                 newNode = bestMappedNode;
                                             }else{
                                                 // no mapping found (empty node)
-                                                transferFileVal.promoteNode(refineFileVal.getRefineTreeNode(tree));
+                                                transferFileVal.promoteNode(refineFileVal.getRefineNode(tree));
                                                 // need to map predicates to null
                                                 transferFileVal.addNullMapping(predsUnmapped);
                                                 if (refineFileVal.containsRefineNode(tree)){

@@ -18,62 +18,55 @@ import org.apache.commons.lang3.StringUtils;
  */
 public class Refine {
         //HashMap<String, RefineNode> refines = null;
-        HashMap<String, RefineTreeNode> refines2 = null;
+        HashMap<String, RefineNode> refines = null;
         int Tree = 0;
         
         public Refine() {
             //refines = new HashMap<String, RefineNode>();
-            refines2 = new HashMap<String, RefineTreeNode>();
+            refines = new HashMap<String, RefineNode>();
         }
         
         public void addNode(int model, String key, String node, boolean leftBranch, boolean rightBranch) {
             String treeNumber = Integer.toString(model);
-            RefineTreeNode treeNode = new RefineTreeNode();
+            RefineNode treeNode = new RefineNode();
             RefineNode rule = null;
             
-            if (refines2.containsKey(treeNumber)){
-                treeNode = refines2.get(treeNumber);
+            if (refines.containsKey(treeNumber)){
+                treeNode = refines.get(treeNumber);
             }else{
-                refines2.put(treeNumber, treeNode);
+                refines.put(treeNumber, treeNode);
             }
             
-            RefineTreeNode current = treeNode;
+            RefineNode current = treeNode;
             String[] path = key.split(",");
             if (key.isEmpty()){
-                rule = new RefineNode(node, leftBranch, rightBranch);
-                treeNode.setNode(rule);
+                //rule = new RefineNode(node, leftBranch, rightBranch);
+                //treeNode.setNode(rule);
+                treeNode.setNodeValues(node, leftBranch, rightBranch);
             }else{
-                rule = new RefineNode(node, leftBranch, rightBranch);
+                //rule = new RefineNode(node, leftBranch, rightBranch);
                 for (String p : path) {
                     if (p.equals("true")) {
-                        RefineTreeNode left = current.getLeftNode();
+                        RefineNode left = current.getLeftNode();
                         if (left == null) {
-                            left = new RefineTreeNode();
+                            left = new RefineNode();
                             current.setLeftNode(left);
                         }
                         current = left;
                     }else{
-                        RefineTreeNode right = current.getRightNode();
+                        RefineNode right = current.getRightNode();
                         if (right == null) {
-                            right = new RefineTreeNode();
+                            right = new RefineNode();
                             current.setRightNode(right);
                         }
                         current = right;
                     }
                 }
-                current.setNode(rule);
+                //current.setNode(rule);
+                current.setNodeValues(node, leftBranch, rightBranch);
             }
         }
-        
-        /*public void addNode_old(int model, String key, String node, boolean leftBranch, boolean rightBranch) {
-            RefineNode rule = refines.get(model + ";" + key);
-
-            if(rule == null) {
-                rule = new RefineNode(node, leftBranch, rightBranch);
-                refines.put(model + ";" + key, rule);
-            }
-        }*/
-        
+       
         public RefineNode getRefineNode(boolean[] tree) {
             ArrayList<String> str = new ArrayList<String>();
             for (boolean bool : tree) {
@@ -81,29 +74,9 @@ public class Refine {
             }
             if (str.isEmpty())
             {
-                return refines2.get(Integer.toString(this.Tree)).getNode();
+                return refines.get(Integer.toString(this.Tree));
             }
-            RefineTreeNode current = refines2.get(Integer.toString(this.Tree));
-            for (boolean p : tree) {
-                if (p) {
-                    current = current.getLeftNode();
-                }else{
-                    current = current.getRightNode();
-                }
-            }
-            return current.getNode();
-        }
-        
-        public RefineTreeNode getRefineTreeNode(boolean[] tree) {
-            ArrayList<String> str = new ArrayList<String>();
-            for (boolean bool : tree) {
-                str.add(String.valueOf(bool));
-            }
-            if (str.isEmpty())
-            {
-                return refines2.get(Integer.toString(this.Tree));
-            }
-            RefineTreeNode current = refines2.get(Integer.toString(this.Tree));
+            RefineNode current = refines.get(Integer.toString(this.Tree));
             for (boolean p : tree) {
                 if (p) {
                     current = current.getLeftNode();
@@ -114,25 +87,13 @@ public class Refine {
             return current;
         }
         
-        /*public RefineNode getRefineNode_old(boolean[] tree) {
-            ArrayList<String> str = new ArrayList<String>();
-            for (boolean bool : tree) {
-                str.add(String.valueOf(bool));
-            }
-            if (str.isEmpty())
-            {
-                return refines.get(this.Tree + ";");
-            }
-            return refines.get(this.Tree + ";" + String.join(",", str));
-        }*/
-        
         public boolean containsRefineNode(boolean[] tree) {
             if (tree.length == 0)
             {
                 
-                return refines2.containsKey(Integer.toString(this.Tree)) && refines2.get(Integer.toString(this.Tree)) != null && refines2.get(Integer.toString(this.Tree)).getNode() != null;
+                return refines.containsKey(Integer.toString(this.Tree)) && refines.get(Integer.toString(this.Tree)) != null && !refines.get(Integer.toString(this.Tree)).getNode().isEmpty();
             }
-            RefineTreeNode current = refines2.get(Integer.toString(this.Tree));
+            RefineNode current = refines.get(Integer.toString(this.Tree));
             if (current == null)
             {
                 return false;
@@ -150,20 +111,8 @@ public class Refine {
                     current = current.getRightNode();
                 }
             }
-            return current.getNode() != null;
+            return current.getNode() != null && !current.getNode().isEmpty();
         }
-        
-        /*public boolean containsRefineNode_old(boolean[] tree) {
-            ArrayList<String> str = new ArrayList<String>();
-            for (boolean bool : tree) {
-                str.add(String.valueOf(bool));
-            }
-            if (str.isEmpty())
-            {
-                return refines.containsKey(this.Tree + ";");
-            }
-            return refines.containsKey(this.Tree + ";" + String.join(",", str));
-        }*/
         
         public RefineNode getParentRefineNode(boolean[] tree) {
             boolean[] newTree = Arrays.copyOfRange(tree, 0, tree.length-1);
@@ -205,12 +154,4 @@ public class Refine {
         public int getTree() {
             return this.Tree;
         }
-        
-//        public RefineNode getParentValidRefineNode(boolean[] tree) {
-//                boolean[] newTree = Arrays.copyOfRange(tree, 0, tree.length-1);
-//                while(newTree.length > 0 && newTree[newTree.length-1] == false)
-//                {
-//                    newTree = Arrays.copyOfRange(newTree, 0, newTree.length-1);
-//                }
-//        }
 }

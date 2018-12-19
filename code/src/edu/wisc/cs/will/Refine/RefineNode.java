@@ -21,20 +21,33 @@ public class RefineNode {
         private String node;
         private boolean leftBranch;
         private boolean rightBranch;
+        private RefineNode leftNode;
+        private RefineNode rightNode;
         private SingleClauseNode singleNode;
         private HashMap<String, Term> singleNodeVariables;
         private SingleClauseNode singleNoNode;
         private HashMap<String, Term> singleNoNodeVariables;
         
         public RefineNode(String node, boolean leftBranch, boolean rightBranch) {
-                    this.node = node;
-                    this.leftBranch = leftBranch;
-                    this.rightBranch = rightBranch;
-                    this.singleNode = null;
+            this.node = node;
+            this.leftBranch = leftBranch;
+            this.rightBranch = rightBranch;
+            this.singleNode = null;
+        }
+
+        public RefineNode() {
+            this.node = "";
+            this.singleNode = null;
         }
         
         public String getNode() {
             return node;
+        }
+        
+        public void setNodeValues(String node, boolean leftBranch, boolean rightBranch) {
+            this.node = node;
+            this.leftBranch = leftBranch;
+            this.rightBranch = rightBranch;
         }
         
         public void setNode(String node) {
@@ -118,6 +131,22 @@ public class RefineNode {
         
         public void setRightBranch(boolean rightBranch) {
             this.rightBranch = rightBranch;
+        }
+        
+        public RefineNode getLeftNode() {
+            return leftNode;
+        }
+        
+        public void setLeftNode(RefineNode node) {
+            leftNode = node;
+        }
+        
+        public RefineNode getRightNode() {
+            return rightNode;
+        }
+        
+        public void setRightNode(RefineNode node) {
+            rightNode = node;
         }
 
 }
