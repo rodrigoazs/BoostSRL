@@ -4,6 +4,8 @@ Developed by [Jude Shavlik](http://pages.cs.wisc.edu/~shavlik/), [Tushar Khot](h
 
 ---
 
+This algorithm was modified to perform Transfer Learning/Theory Revision in Boosted RDNs.
+
 ### Source code for **BoostSRL**
 
 <!--
