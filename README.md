@@ -43,6 +43,21 @@ Source should contain the predicates to be transferred from source domain among 
 
 Three search bias to conduct the way the algorithm performs the mapping are included. The first one, called ssearchArgPermutation, allows searching for the permutation of all arguments in the target predicate to check if one of them makes the source and target predicates compatible. It allows for example, the mapping of a source predicate with the inverse relation of a target predicate (e.g.wokedunder(A,B) -> advises(B,A), which is the same as advisedby(A,B)). The second search bias, named searchEmpty, allows generating an additional "empty" mapping even if there is a compatible target predicate to map the source predicate. The  last one, named allowSameTargetMap, allows mapping distinct source predicates to the same target predicate. If this bias is not used, the algorithm finds a one-to-one correspondence between source and target predicates (except for ”empty mapping).
 
+Theory Revision/Refinement or Parameter Learning is done through the file refine.txt
+
+  ```text
+  0;;advisedby(A, B) :- student(A), professor(B).;true;true
+  0;true;publication(C, A), publication(C, B).;true;true
+  0;false;student(A).;true;true
+  0;false,false;professor(B).;true;true
+  ```
+
+Each part of the code has the following meaning:
+
+  ```text
+ TREE_ID;TREE_PATH;CLAUSE;LEFT EXPANDING;RIGHT EXPANDING
+  ``` 
+
 ### Source code for **BoostSRL**
 
 <!--
